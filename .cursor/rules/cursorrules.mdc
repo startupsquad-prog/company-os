@@ -1,0 +1,720 @@
+---
+alwaysApply: true
+---
+# Company OS — Master Context
+
+## 1. Overview
+Company OS is our internal platform for managing all departments:  
+HR + Employee Management, Sales Exec + Manager, Client Ops/POC, LLC Handling, Creative (Video Editor), and Director/SuperAdmin.  
+
+Later we'll attach external systems (USDrop SaaS, etc.),  
+but **for now we are focusing only on the core Company OS.**
+Note: Faire USA will be handled in a separate project.
+
+## 2. Tech Stack
+- Next.js 15 (App Router) + TypeScript  
+- Tailwind + Shadcn/ui (design system) + Sidebar Toggle layout  
+- Supabase (Postgres, Auth, RLS, Storage)  
+- Trigger.dev (for background jobs)  
+- RBAC implemented natively via Supabase policies  
+
+Each vertical is a schema inside one Supabase project:  
+`core`, `crm`, `ats`, `ops`, `common_util`, plus verticals like `import_ops`.  
+
+## 3. Relationship Philosophy
+- **One source of truth** for people → `core.contacts`
+- **Companies** → `core.companies`
+- Every domain table links to these instead of duplicating name/phone.  
+- Common entity relationships:
+  - **1 → many:** company has many contacts; lead has many interactions; order has many items.  
+  - **many → many:** employees ↔ roles (`core.user_role_bindings`); orders ↔ quotations (`ops.order_quotations`).  
+  - **1 → 1:** auth.user → core.profile.  
+
+All foreign keys use `uuid`.  Soft deletes = `deleted_at` timestamp.  
+
+## 4. Key Schemas and Relationships
+
+### `core` (foundation)
+- `users` (Supabase auth) → `profiles` (extends user info)  
+- `contacts` (people or organizations)  
+- `companies` + `company_contacts` (join)  
+- `roles`, `permissions`, `role_permissions`, `user_role_bindings` → RBAC system  
+- `departments`, `teams`, `employees`  
+- `activity_events` (global audit log)  
+- `enum_registry` (dynamic enums - category, key, label, order_no)
+
+**Relations**
+- `profiles.department_id` → `departments.id`
+- `employees.profile_id` → `profiles.id`
+- `contacts` may link to `companies` through `company_contacts`
+- `user_role_bindings.user_id` → `auth.users.id`
+- `user_role_bindings.role_id` → `roles.id`
+- `role_permissions.permission_id` → `permissions.id`
+
+---
+
+### `crm`
+- `leads` (links to contact_id, company_id, owner_id → profiles)  
+- `opportunities` (lead_id, pipeline_id, stage_id)  
+- `interactions` (entity_type, entity_id)  
+- `pipelines`, `stages`, `status_history`
+
+**Relations**
+- 1 Lead → many Interactions  
+- 1 Lead → many Status History  
+- 1 Pipeline → many Stages  
+- 1 Stage → many Opportunities  
+
+---
+
+### `ats`
+- `applications` (contact_id, job_id, source)  
+- `candidates` (contact_id)  
+- `interviews` (application_id)  
+- `evaluations` (interview_id)
+
+**Relations**
+- 1 Candidate → many Applications  
+- 1 Application → many Interviews  
+- 1 Interview → 1 Evaluation (or many if multi-panel)
+
+---
+
+### `ops`
+- `orders` (account_id, owner_id, vertical_key)  
+- `order_items` (order_id)  
+- `quotations` (multi-type: factory, freight, client, warehouse)  
+- `shipments` (multi-type: amazon_india, website_india, freight_forwarding)  
+- `order_quotations` (many-to-many join table)  
+- `payments`, `payouts`  
+- `quotation_status_history`, `shipment_status_history`, `order_status_history`  
+
+**Relations**
+- 1 Order → many Items, Shipments, Quotations, Payments  
+- 1 Quotation → may spawn 1 Shipment (via linked_quotation_id)  
+- 1 Shipment → 0/1 Quotation + 1 Order  
+- Orders ↔ Quotations (many-to-many via order_quotations)  
+- 1 Order → many OrderStatusHistory  
+- 1 Quotation → many QuotationStatusHistory  
+- 1 Shipment → many ShipmentStatusHistory  
+- 1 Order → many ActivityEvents (via entity log)  
+
+**Quotation Model (Multi-Type, Normalized)**
+- **Base table:** `ops.quotations`
+- **Key fields:**
+  - `quotation_type`: enum (`'factory' | 'freight' | 'client' | 'warehouse'`)
+  - `source_party_id` → `core.contacts` (who sent the quote)
+  - `target_party_id` → `core.contacts` (who received it)
+  - `order_id` → `ops.orders` (nullable, when linked to an order)
+  - `related_entity_type`: enum (`'product' | 'shipment' | 'service' | 'import_request'`)
+  - `related_entity_id`: UUID (polymorphic link)
+  - `currency`, `amount`, `tax_jsonb`, `terms`, `files[]` (commercial details)
+  - `status`: enum (`'draft' | 'sent' | 'approved' | 'rejected' | 'expired'`)
+  - `vertical_key`: text (e.g., "import", "india_website")
+  - `meta`: jsonb (extra data like weight, duration, incoterm)
+- **Why:** One normalized table handles all quotation types, allowing dozens of business use-cases while maintaining a single quoting flow. Filter by `quotation_type` or `vertical_key` to isolate logic.
+
+**Shipment Model (Flexible Yet Structured)**
+- **Base table:** `ops.shipments`
+- **Key fields:**
+  - `shipment_type`: enum (`'amazon_india' | 'website_india' | 'freight_forwarding'`)
+  - `order_id` → `ops.orders` (nullable, when customer order)
+  - `linked_quotation_id` → `ops.quotations` (nullable, cost source)
+  - `from_party_id` / `to_party_id` → `core.contacts` (origin / destination)
+  - `carrier`: text (logistics partner)
+  - `tracking_no`, `tracking_url`: text
+  - `mode`: enum (`'air' | 'sea' | 'express' | 'domestic'`)
+  - `status`: enum (`'pending' | 'in_transit' | 'delivered' | 'returned' | 'cancelled'`)
+  - `vertical_key`: text (to segment by business)
+  - `charges_jsonb`: jsonb (breakdown of freight, insurance, etc.)
+  - `meta`: jsonb (per-type custom fields, e.g., carton count, dimensions)
+- **Why:** Centralizes logistics tracking and cost capture while allowing UI to behave differently per type (e.g., freight shipments show documents, customer shipments show tracking links).
+
+**Relationship Strategy**
+- Quotations ↔ Shipments ↔ Orders:
+  - A quotation can **spawn** a shipment (`linked_quotation_id`)
+  - A shipment can **belong** to an order (`order_id`)
+  - Many-to-many join table: `ops.order_quotations` (if needed)
+- Polymorphic `related_entity_type/id` allows attaching quotations/shipments to anything (import request, warehouse PO, etc.) without breaking schema
+- `vertical_key` + RBAC keep data segmented while living in one DB  
+
+---
+
+### `common_util`
+- `tasks` ↔ `task_assignees`  
+- `sops`, `files`, `password_vault`, `subscriptions`  
+
+**Relations**
+- 1 Task → many Assignees  
+- 1 SOP → many Files  
+- 1 Subscription → owner_team (FK → core.teams)
+
+---
+
+### `import_ops`
+Dedicated vertical for Import business:  
+- `inquiries`, `suppliers`, `rfqs`, `quotes`, `shipments`, `landed_costs`  
+- 1 Inquiry → many RFQs  
+- 1 RFQ → many Quotes → may become Orders  
+
+---
+
+## 5. General Patterns
+- Every table includes: `id`, `created_at`, `updated_at`, `created_by`, `deleted_at nullable`.  
+- History tables for status changes (`*_status_history`) - always append records, never overwrite.  
+- Use RLS to limit vertical access (`vertical_key` column).  
+- Polymorphism handled with (`entity_type`, `entity_id`) pairs.  
+- **Multi-type pattern:** Instead of separate tables per subtype (e.g., "FactoryQuotation", "FreightQuotation"), use **one normalized table per conceptual object** extended with `type` + `context keys` + `links` to related entities. This keeps one flow but allows dozens of business use-cases.
+
+## 5.1. Enum Registry Pattern
+Instead of hard-coding enums in DB migrations, maintain `core.enum_registry`:
+- `id` (uuid PK)
+- `category` (text, e.g., "quotation_type", "shipment_type", "vertical")
+- `key` (text, e.g., "factory", "freight", "import")
+- `label` (text, e.g., "Factory Purchase", "Freight Forwarding")
+- `order_no` (int, for sorting)
+
+**Examples:**
+- category: `quotation_type`, key: `factory`, label: `Factory Purchase`
+- category: `quotation_type`, key: `freight`, label: `Freight Forwarding`
+- category: `vertical`, key: `import`, label: `Import Vertical`
+
+This gives flexibility to add new business lines without migrations.
+
+## 5.2. Status History Pattern
+Always maintain separate status history tables:
+- `ops.quotation_status_history`
+- `ops.shipment_status_history`
+- `ops.order_status_history`
+- `crm.status_history` (for leads)
+
+**Pattern:** Always append records; never overwrite. Helps unify analytics ("avg approval time per quotation_type", "avg delivery time per shipment_type").  
+
+---
+
+## 6. Development Phases
+1. **Phase 0:** RBAC + Directory base  
+2. **Phase 1:** CRM Core  
+3. **Phase 2:** ATS Core  
+4. **Phase 3:** Ops Core (Orders, Quotations, Shipments with type columns)  
+5. **Phase 4:** Import Vertical Implementation  
+6. **Phase 5:** Common Tools (Task/SOP/Password/Subscription)  
+7. **Phase 6:** Integrations Dock (Slack, Gmail, WhatsApp)  
+
+---
+
+## 7. Current Scope
+- Only **Company OS**, not USDrop.  
+- Note: Faire USA will be handled in a separate project.  
+- Build everything so that new verticals can plug in later via `vertical_key`.  
+
+---
+
+## 8. When Building Anything
+1. Use existing design tokens and layout (same sidebar and theme).  
+2. Add a migration and RLS policy for every table created.  
+3. Always link back to `core.contacts` and `core.companies`.  
+4. Maintain status history tables.  
+5. UI = role-aware via `can()` function.  
+6. **Use multi-type pattern:** One normalized table with `type` enum + `vertical_key` instead of separate tables per subtype.
+7. **Use enum_registry:** Store enum values in `core.enum_registry` for flexibility without migrations.
+
+## 8.1. UI Handling for Multi-Type Entities
+- **Tabs or Filters by Type:**
+  - `/quotations?type=factory` → show only factory quotes
+  - `/shipments?type=freight_forwarding` → show relevant cards
+- **Common columns:** id, status, amount, created_by
+- **Type-specific columns:** dynamically shown based on `type` field
+- **Form generator:** pick type → form auto-loads relevant fields (defined in JSON schema)
+
+## 8.2. Future: Plug-ins per Type
+Later, each type can have its own micro-module:
+
+| Type              | Extra Logic                                |
+| ----------------- | ------------------------------------------ |
+| Factory Quotation | Attach factory PO and sample approval flow |
+| Freight Quotation | Add incoterm, route, forwarder selection   |
+| Client Quotation  | Convert directly into invoice/order        |
+| Freight Shipment  | Attach customs docs, airway bill uploads   |
+| Amazon India Shipment | Auto-sync tracking via Amazon API      |
+| Website India Shipment | Customer tracking and delivery updates |
+
+They all extend the same parent table via an **extra table keyed by id** if you ever need schema divergence (e.g., `ops.freight_shipments` with special columns).
+
+## 8.3. Decision Framework
+
+| Question                                      | Recommended Choice                                |
+| --------------------------------------------- | ------------------------------------------------- |
+| Separate table per type?                      | ❌ No, use one with `type` + `vertical_key`        |
+| How to add new vertical later?                | Add new `type` value and optional extension table |
+| How to connect orders, quotations, shipments? | Via polymorphic links + history tables            |
+| How to segregate permissions?                 | RBAC by module + vertical_key                     |
+| How to view/manage in UI?                     | Filter by type; use templates/forms per type      |  
+
+
+for every database thing read the current database and then update also take care of relationships all the time. use supabase MCP always
+Whenever we finalize a schema (e.g., shipments, quotations), append its section to .cursorrules under Relationships so the AI always remembers
+You can even keep a second file docs/schema-diagram.md with an ASCII or Mermaid ERD if you want visual hints.
+
+---
+
+## 9. UI/UX Quality Assurance — MANDATORY CHECKLIST
+
+**CRITICAL:** Before marking any feature, page, component, or UI element as complete, you MUST verify ALL items below. This is non-negotiable for industry-grade quality.
+
+### 9.1. Responsive Design Verification
+- [ ] **Mobile (320px - 768px):**
+  - All content is readable without horizontal scrolling
+  - Touch targets are at least 44x44px
+  - Forms stack vertically and remain usable
+  - Navigation is accessible (hamburger menu, bottom nav, etc.)
+  - Tables/cards adapt (scroll, stack, or card view)
+  - Text is legible (minimum 14px, proper line-height)
+  
+- [ ] **Tablet (768px - 1024px):**
+  - Layout adapts appropriately (2-column grids, adjusted spacing)
+  - Sidebar behavior is correct (collapsible, overlay, or persistent)
+  - Modals/dialogs fit within viewport
+  - Images/media scale proportionally
+  
+- [ ] **Desktop (1024px+):**
+  - Content doesn't stretch too wide (max-width containers)
+  - Multi-column layouts work correctly
+  - Hover states are functional
+  - Keyboard navigation works throughout
+
+- [ ] **Large Screens (1440px+):**
+  - Content centers or has max-width constraints
+  - No excessive whitespace or cramped layouts
+
+### 9.2. Layout & Spacing Checks
+- [ ] **No Overlaps:**
+  - Elements don't overlap each other at any breakpoint
+  - Fixed/sticky elements don't cover content
+  - Z-index is properly managed (modals > dropdowns > content)
+  - Absolute/fixed positioned elements are contained
+  
+- [ ] **No Overflows:**
+  - Horizontal overflow is prevented (use `overflow-x-hidden` on body if needed)
+  - Long text wraps or truncates with ellipsis
+  - Images respect container bounds
+  - Tables have horizontal scroll when needed (with proper styling)
+  - Code blocks are scrollable, not overflowing
+  
+- [ ] **Consistent Spacing:**
+  - Uses Tailwind spacing scale consistently (p-4, gap-4, mb-6, etc.)
+  - Vertical rhythm is maintained (consistent margins between sections)
+  - Padding inside cards/containers is uniform
+  - Form fields have consistent spacing
+
+### 9.3. Component Integration & Adaptation
+- [ ] **Works with Sidebar:**
+  - Content adjusts when sidebar is toggled
+  - No content hidden behind sidebar
+  - Proper margin/padding on main content area
+  - Mobile sidebar overlay doesn't break layout
+  
+- [ ] **Works with Header/Navigation:**
+  - Fixed headers don't cover content (add top padding/margin)
+  - Sticky elements account for header height
+  - Dropdowns/menus don't get cut off
+  
+- [ ] **Works with Modals/Dialogs:**
+  - Modals are centered and responsive
+  - Backdrop prevents interaction with underlying content
+  - Scrollable content within modals works correctly
+  - Close button is always accessible
+  
+- [ ] **Works with Forms:**
+  - Form fields are properly aligned
+  - Error messages don't break layout
+  - Validation states are visually clear
+  - Submit buttons are accessible and properly positioned
+
+### 9.4. Sizing & Typography
+- [ ] **Text Sizing:**
+  - Headings use semantic sizes (h1-h6) with appropriate Tailwind classes
+  - Body text is readable (14px-16px minimum)
+  - Line-height is appropriate (1.5-1.6 for body, tighter for headings)
+  - Text scales appropriately on different screen sizes
+  
+- [ ] **Element Sizing:**
+  - Buttons have consistent heights (use h-9, h-10, h-11 from shadcn)
+  - Icons are properly sized (16px, 20px, 24px as appropriate)
+  - Input fields have consistent heights
+  - Cards/containers have appropriate min/max widths
+  
+- [ ] **Image/Media Sizing:**
+  - Images maintain aspect ratio
+  - Images are optimized and lazy-loaded when appropriate
+  - Videos/iframes are responsive (aspect-ratio utilities)
+
+### 9.5. Interactive Elements
+- [ ] **Hover States:**
+  - All clickable elements have hover feedback
+  - Hover states are consistent across similar elements
+  - No hover-only critical information (accessibility)
+  
+- [ ] **Focus States:**
+  - Keyboard navigation is possible throughout
+  - Focus indicators are visible (Tailwind focus:ring utilities)
+  - Focus order is logical (tab order)
+  - Skip links for main content when appropriate
+  
+- [ ] **Loading States:**
+  - Loading spinners/skeletons are properly positioned
+  - Loading states don't break layout
+  - Error states are handled gracefully
+  
+- [ ] **Disabled States:**
+  - Disabled elements are visually distinct
+  - Disabled elements prevent interaction
+  - Cursor changes appropriately (not-allowed for disabled)
+
+### 9.6. Cross-Browser & Device Testing
+- [ ] **Browser Compatibility:**
+  - Tested in Chrome, Firefox, Safari, Edge (or at least Chrome + one other)
+  - CSS Grid/Flexbox works correctly
+  - Tailwind utilities render as expected
+  - No console errors
+  
+- [ ] **Device Testing:**
+  - Touch interactions work on mobile devices
+  - Scroll behavior is smooth
+  - Viewport meta tag is correct
+  - No zoom issues on mobile
+
+### 9.7. Accessibility (a11y)
+- [ ] **Semantic HTML:**
+  - Proper heading hierarchy (h1 → h2 → h3)
+  - Buttons vs links used correctly
+  - Form labels are properly associated
+  - ARIA labels when needed (for icon-only buttons, etc.)
+  
+- [ ] **Color Contrast:**
+  - Text meets WCAG AA contrast ratios (4.5:1 for normal text, 3:1 for large)
+  - Interactive elements have sufficient contrast
+  - Don't rely solely on color to convey information
+  
+- [ ] **Screen Reader Support:**
+  - Alt text for images
+  - Descriptive link text (not "click here")
+  - Form errors are announced
+
+### 9.8. Performance & Polish
+- [ ] **Performance:**
+  - No layout shift (CLS) - reserve space for images/async content
+  - Smooth animations (use `transition` utilities)
+  - No unnecessary re-renders
+  - Lazy loading for below-fold content
+  
+- [ ] **Visual Polish:**
+  - Consistent border radius (use Tailwind rounded utilities)
+  - Consistent shadows (use Tailwind shadow utilities)
+  - Consistent colors (use design system tokens)
+  - Smooth transitions for state changes
+
+### 9.9. Edge Cases & Error Handling
+- [ ] **Empty States:**
+  - Empty lists show helpful messages
+  - Empty states don't break layout
+  - Empty states have appropriate CTAs when relevant
+  
+- [ ] **Error States:**
+  - Error messages are visible and don't break layout
+  - Network errors are handled gracefully
+  - Form validation errors are clear and actionable
+  
+- [ ] **Long Content:**
+  - Long text wraps or truncates appropriately
+  - Long lists are paginated or virtualized
+  - Long URLs/IDs are truncated with ellipsis
+  - Long table cells handle overflow correctly
+
+### 9.10. Testing Workflow
+**Before completing any UI work, you MUST:**
+1. **Visual Inspection:**
+   - Open the page/component in browser
+   - Test at multiple viewport sizes (DevTools responsive mode)
+   - Check all interactive states (hover, focus, active, disabled)
+   - Verify no console errors
+   
+2. **Interaction Testing:**
+   - Click all buttons/links
+   - Fill out all forms
+   - Test keyboard navigation (Tab, Enter, Escape)
+   - Test mobile touch interactions
+   
+3. **Integration Testing:**
+   - Verify component works within the full page layout
+   - Check sidebar toggle behavior
+   - Test modals/dialogs with real content
+   - Verify data loading states
+   
+4. **Edge Case Testing:**
+   - Test with empty data
+   - Test with very long text/content
+   - Test with many items (pagination, scrolling)
+   - Test error scenarios
+
+### 9.11. Common Issues to Watch For
+- ❌ **Fixed positioning breaking on mobile** → Use responsive positioning
+- ❌ **Z-index conflicts** → Use consistent z-index scale (z-10, z-20, z-30, z-40, z-50)
+- ❌ **Horizontal scroll** → Check for fixed widths, negative margins, or absolute positioning
+- ❌ **Text overflow** → Use `truncate`, `break-words`, or `overflow-hidden`
+- ❌ **Form label misalignment** → Use consistent form structure (shadcn form components)
+- ❌ **Modal backdrop issues** → Ensure proper z-index and pointer-events
+- ❌ **Sidebar content overlap** → Add proper margin/padding to main content
+- ❌ **Table overflow** → Use `overflow-x-auto` with proper min-width
+- ❌ **Button text wrapping** → Use `whitespace-nowrap` or adjust button width
+- ❌ **Image aspect ratio issues** → Use `aspect-ratio` utility or `object-fit`
+
+### 9.12. Quick Reference: Tailwind Patterns
+```css
+/* Responsive containers */
+container mx-auto px-4 sm:px-6 lg:px-8
+
+/* Prevent overflow */
+overflow-hidden overflow-x-auto overflow-y-auto
+
+/* Text truncation */
+truncate (single line) | line-clamp-2 (multi-line)
+
+/* Responsive grid */
+grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4
+
+/* Responsive flex */
+flex flex-col md:flex-row gap-4
+
+/* Proper spacing */
+space-y-4 (vertical) | space-x-4 (horizontal) | gap-4 (grid/flex)
+
+/* Z-index scale */
+z-10 (dropdowns) | z-20 (sticky) | z-30 (overlay) | z-40 (modal) | z-50 (toast)
+```
+
+**REMINDER:** If you implement ANY UI element without completing this checklist, the work is INCOMPLETE. Always verify the UI flow works correctly across all scenarios before marking as done.
+
+---
+
+## 10. LAYOUT & OVERFLOW RULES — CRITICAL PREVENTION
+
+**MANDATORY:** These rules MUST be followed for ALL pages and components to prevent recurring layout bugs.
+
+### 10.1. Page Layout Structure — NEVER DUPLICATE
+
+**CRITICAL RULE:** Pages MUST NEVER duplicate `SidebarProvider`, `AppSidebar`, `SidebarInset`, or `DashboardTopbar`.
+
+**✅ CORRECT Pattern:**
+```tsx
+// ✅ Use AuthenticatedLayout via layout.tsx
+// src/app/dashboard/layout.tsx
+import { AuthenticatedLayout } from '@/components/authenticated-layout'
+export default function DashboardLayout({ children }) {
+  return <AuthenticatedLayout>{children}</AuthenticatedLayout>
+}
+
+// ✅ Page only renders content
+// src/app/dashboard/notifications/page.tsx
+export default function NotificationsPage() {
+  return <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
+    {/* Page content only */}
+  </div>
+}
+```
+
+**❌ WRONG Pattern:**
+```tsx
+// ❌ NEVER do this in a page component
+export default function NotificationsPage() {
+  return (
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <DashboardTopbar />
+        {/* content */}
+      </SidebarInset>
+    </SidebarProvider>
+  )
+}
+```
+
+**Why:** Duplicating layout components causes:
+- Duplicated sidebars (visual glitches)
+- Broken scroll boundaries
+- Z-index conflicts
+- Layout overflow issues
+
+### 10.2. Content Container Rules
+
+**For ALL page content containers:**
+
+1. **Root Container:**
+   ```tsx
+   <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
+   ```
+   - `flex flex-1 flex-col` - Takes full height, stacks vertically
+   - `min-w-0` - Prevents flex items from overflowing
+   - `h-full` - Full height
+   - `overflow-hidden` - Prevents content from leaking
+
+2. **Scrollable Content Areas:**
+   ```tsx
+   <div className="flex-1 overflow-y-auto min-h-0">
+   ```
+   - `flex-1` - Takes remaining space
+   - `overflow-y-auto` - Vertical scroll when needed
+   - `min-h-0` - Critical: Allows flex item to shrink below content size
+
+3. **Fixed/Sticky Headers:**
+   ```tsx
+   <div className="flex-shrink-0">
+   ```
+   - `flex-shrink-0` - Prevents header from shrinking
+
+### 10.3. Horizontal Scroll Rules (Kanban, Tables, etc.)
+
+**For horizontal scrolling content:**
+
+1. **Container:**
+   ```tsx
+   <div className="w-full h-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
+   ```
+   - `overscroll-x-contain` - Prevents scroll from extending under sidebar
+   - `overflow-y-hidden` - No vertical scroll on horizontal container
+
+2. **Content Wrapper:**
+   ```tsx
+   <div className="inline-flex gap-4 pb-4 min-h-[500px]">
+   ```
+   - `inline-flex` - Allows horizontal expansion
+   - `pb-4` - Padding for scrollbar
+
+3. **Parent Container:**
+   ```tsx
+   <div className="flex-1 overflow-hidden min-w-0">
+   ```
+   - Must have `overflow-hidden` and `min-w-0` on parent
+
+### 10.4. Modal/Dialog Rules
+
+**For ALL modals, dialogs, and floating panels:**
+
+1. **Positioning:**
+   ```tsx
+   className="fixed z-40 isolate overflow-hidden"
+   style={{
+     maxWidth: 'calc(100vw - 2rem)',
+     maxHeight: 'calc(100vh - 5rem)',
+   }}
+   ```
+   - `fixed` - Position relative to viewport
+   - `z-40` - Below topbar (z-50), above content
+   - `isolate` - Creates stacking context
+   - `overflow-hidden` - Prevents content leakage
+   - Inline styles for viewport constraints
+
+2. **Never duplicate topbar/sidebar inside modals** - Modals should only contain their own content
+
+### 10.5. Sidebar & Topbar Rules
+
+1. **Sidebar:**
+   - Always uses `isolate` class
+   - Fixed positioning with proper z-index (z-10)
+   - Never duplicate in pages
+
+2. **Topbar:**
+   - Always uses `sticky top-0 z-50 isolate`
+   - Never affected by content scrolling
+   - Never duplicate in pages
+
+3. **SidebarInset:**
+   - Always uses `isolate` class
+   - Contains topbar and content
+   - Has `overflow-hidden` to prevent leakage
+
+### 10.6. Checklist Before Committing Any Page/Component
+
+**MANDATORY checks before marking layout work as complete:**
+
+- [ ] **No Layout Duplication:**
+  - Page does NOT include `SidebarProvider`, `AppSidebar`, `SidebarInset`, or `DashboardTopbar`
+  - Page uses `AuthenticatedLayout` via layout.tsx or parent layout
+
+- [ ] **Proper Container Structure:**
+  - Root container has `flex flex-1 flex-col min-w-0 h-full overflow-hidden`
+  - Scrollable areas have `flex-1 overflow-y-auto min-h-0`
+  - Fixed headers have `flex-shrink-0`
+
+- [ ] **Horizontal Scroll Handling:**
+  - Horizontal scroll containers have `overscroll-x-contain`
+  - Parent has `overflow-hidden min-w-0`
+  - Scrollbar doesn't extend under sidebar
+
+- [ ] **Modal/Dialog Positioning:**
+  - Uses `fixed z-40 isolate overflow-hidden`
+  - Has viewport constraints (maxWidth/maxHeight)
+  - Doesn't duplicate topbar/sidebar
+
+- [ ] **Sidebar Boundaries:**
+  - Content respects sidebar boundaries
+  - No content leaks under sidebar
+  - Scrollbars stay within content area
+
+- [ ] **Topbar Protection:**
+  - Topbar is sticky and isolated
+  - Not affected by content scrolling
+  - Buttons remain accessible
+
+### 10.7. Common Layout Anti-Patterns to Avoid
+
+❌ **Don't:**
+- Duplicate layout components in pages
+- Use `overflow-x-auto` without `overscroll-x-contain`
+- Forget `min-w-0` on flex items
+- Forget `min-h-0` on scrollable flex items
+- Use `overflow: visible` on containers with scrollable children
+- Position modals without viewport constraints
+- Create horizontal scroll without proper containment
+
+✅ **Do:**
+- Use `AuthenticatedLayout` via layout.tsx
+- Always include `min-w-0` and `min-h-0` where needed
+- Use `overscroll-x-contain` for horizontal scroll
+- Use `isolate` for stacking contexts
+- Constrain modals to viewport
+- Test at all breakpoints
+
+### 10.8. Quick Reference: Layout Patterns
+
+```tsx
+// ✅ Page Component (uses AuthenticatedLayout via layout.tsx)
+export default function MyPage() {
+  return (
+    <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
+      <div className="flex-shrink-0">
+        {/* Fixed header */}
+      </div>
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {/* Scrollable content */}
+      </div>
+    </div>
+  )
+}
+
+// ✅ Horizontal Scroll Container
+<div className="flex-1 overflow-hidden min-w-0">
+  <div className="w-full h-full overflow-x-auto overflow-y-hidden overscroll-x-contain">
+    <div className="inline-flex gap-4 pb-4">
+      {/* Scrollable content */}
+    </div>
+  </div>
+</div>
+
+// ✅ Modal/Dialog
+<Card className="fixed z-40 isolate overflow-hidden" style={{ maxWidth: 'calc(100vw - 2rem)', maxHeight: 'calc(100vh - 5rem)' }}>
+  {/* Modal content */}
+</Card>
+```
+
+**REMINDER:** If you create ANY page or component that violates these layout rules, the work is INCOMPLETE. Always verify layout structure before marking as done.
