@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
 import type {
   NotificationRow,
@@ -19,6 +20,7 @@ interface UseNotificationsOptions {
 
 export function useNotifications(options: UseNotificationsOptions = {}) {
   const { filters = {}, autoRefresh = false, refreshInterval = 30000 } = options
+  const { user: clerkUser } = useUser()
   const [notifications, setNotifications] = useState<NotificationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -30,21 +32,18 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       setLoading(true)
       setError(null)
 
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
+      if (!clerkUser) {
         setLoading(false)
         return
       }
+
+      const supabase = createClient()
 
       // Build query directly using Supabase client (like tasks)
       let query = supabase
         .from('notifications')
         .select('*', { count: 'exact' })
-        .eq('user_id', user.id)
+        .eq('user_id', clerkUser.id)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
@@ -88,62 +87,51 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     } finally {
       setLoading(false)
     }
-  }, [
-    filters.read,
-    filters.type,
-    filters.entity_type,
-    filters.limit,
-    filters.offset,
-  ]) // Only depend on individual filter properties, not the object
+  }, [filters.read, filters.type, filters.entity_type, filters.limit, filters.offset]) // Only depend on individual filter properties, not the object
 
-  const markAsRead = useCallback(async (notificationId: string) => {
-    try {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+  const markAsRead = useCallback(
+    async (notificationId: string) => {
+      try {
+        if (!clerkUser) {
+          throw new Error('Unauthorized')
+        }
 
-      if (!user) {
-        throw new Error('Unauthorized')
-      }
+        const supabase = createClient()
+        const { error } = await supabase
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', notificationId)
+          .eq('user_id', clerkUser.id)
 
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', notificationId)
-        .eq('user_id', user.id)
+        if (error) {
+          throw new Error(`Failed to mark notification as read: ${error.message}`)
+        }
 
-      if (error) {
-        throw new Error(`Failed to mark notification as read: ${error.message}`)
-      }
-
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n
+        // Update local state
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n
+          )
         )
-      )
-      setUnreadCount((prev) => Math.max(0, prev - 1))
-    } catch (err) {
-      console.error('Error marking notification as read:', err)
-      throw err
-    }
-  }, [])
+        setUnreadCount((prev) => Math.max(0, prev - 1))
+      } catch (err) {
+        console.error('Error marking notification as read:', err)
+        throw err
+      }
+    },
+    [clerkUser]
+  )
 
   const markAllAsRead = useCallback(async () => {
     try {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
+      if (!clerkUser) {
         throw new Error('Unauthorized')
       }
 
+      const supabase = createClient()
       // Use the RPC function for efficiency
       const { error } = await supabase.rpc('mark_all_notifications_read', {
-        user_id_param: user.id,
+        p_user_id: clerkUser.id,
       })
 
       if (error) {
@@ -152,62 +140,55 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
       // Update local state
       const now = new Date().toISOString()
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read_at: n.read_at || now }))
-      )
+      setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || now })))
       setUnreadCount(0)
     } catch (err) {
       console.error('Error marking all notifications as read:', err)
       throw err
     }
-  }, [])
+  }, [clerkUser])
 
-  const deleteNotification = useCallback(async (notificationId: string) => {
-    try {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+  const deleteNotification = useCallback(
+    async (notificationId: string) => {
+      try {
+        if (!clerkUser) {
+          throw new Error('Unauthorized')
+        }
 
-      if (!user) {
-        throw new Error('Unauthorized')
+        const supabase = createClient()
+        // Soft delete by setting deleted_at
+        const { error } = await supabase
+          .from('notifications')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', notificationId)
+          .eq('user_id', clerkUser.id)
+
+        if (error) {
+          throw new Error(`Failed to delete notification: ${error.message}`)
+        }
+
+        // Update local state
+        setNotifications((prev) => prev.filter((n) => n.id !== notificationId))
+        // Decrement unread count if notification was unread
+        const notification = notifications.find((n) => n.id === notificationId)
+        if (notification && !notification.read_at) {
+          setUnreadCount((prev) => Math.max(0, prev - 1))
+        }
+      } catch (err) {
+        console.error('Error deleting notification:', err)
+        throw err
       }
+    },
+    [notifications]
+  )
 
-      // Soft delete by setting deleted_at
-      const { error } = await supabase
-        .from('notifications')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', notificationId)
-        .eq('user_id', user.id)
-
-      if (error) {
-        throw new Error(`Failed to delete notification: ${error.message}`)
-      }
-
-      // Update local state
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId))
-      // Decrement unread count if notification was unread
-      const notification = notifications.find((n) => n.id === notificationId)
-      if (notification && !notification.read_at) {
-        setUnreadCount((prev) => Math.max(0, prev - 1))
-      }
-    } catch (err) {
-      console.error('Error deleting notification:', err)
-      throw err
-    }
-  }, [notifications])
-
-  // Initial fetch - only when filters change
+  // Initial fetch - only when filters or user change
   useEffect(() => {
-    fetchNotifications()
+    if (clerkUser) {
+      fetchNotifications()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    filters.read,
-    filters.type,
-    filters.entity_type,
-    filters.limit,
-    filters.offset,
-  ])
+  }, [clerkUser, filters.read, filters.type, filters.entity_type, filters.limit, filters.offset])
 
   // Auto-refresh if enabled
   useEffect(() => {
@@ -224,25 +205,23 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // Set up real-time subscription
   useEffect(() => {
     let isMounted = true
+    if (!clerkUser) return
+
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
 
     const setupSubscription = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user || !isMounted) return
+      if (!isMounted) return
 
       channel = supabase
-        .channel(`notifications:${user.id}`)
+        .channel(`notifications:${clerkUser.id}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'core',
             table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
+            filter: `user_id=eq.${clerkUser.id}`,
           },
           (payload) => {
             if (!isMounted) return
@@ -263,7 +242,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         supabase.removeChannel(channel)
       }
     }
-  }, [])
+  }, [clerkUser])
 
   return {
     notifications,

@@ -94,9 +94,7 @@ export function NotificationsDropdown() {
             <Loader2 className="h-4 w-4 animate-spin mx-auto text-muted-foreground" />
           </div>
         ) : notifications.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            No notifications
-          </div>
+          <div className="p-4 text-center text-sm text-muted-foreground">No notifications</div>
         ) : (
           <div className="max-h-96 overflow-y-auto">
             {notifications.map((notification) => {
@@ -147,4 +145,3 @@ export function NotificationsDropdown() {
     </DropdownMenu>
   )
 }
-

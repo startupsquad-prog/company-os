@@ -1,11 +1,6 @@
 import { AuthenticatedLayout } from '@/components/authenticated-layout'
 
-export default function TasksLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function TasksLayout({ children }: { children: React.ReactNode }) {
   return <AuthenticatedLayout>{children}</AuthenticatedLayout>
 }
-
 

@@ -14,16 +14,11 @@ const Suggestions = React.forwardRef<HTMLDivElement, SuggestionsProps>(
       <div
         ref={ref}
         className={cn(
-          'flex gap-2 overflow-x-auto pb-2',
+          'flex flex-col gap-2 overflow-y-auto',
           'scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent',
           'scrollbar-thumb-rounded-full',
-          // Hide scrollbar on mobile, show on desktop
-          '[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:thin]',
-          'sm:[&::-webkit-scrollbar]:block',
           // Smooth scrolling
           'scroll-smooth',
-          // Prevent vertical wrap, allow horizontal scroll
-          'flex-nowrap',
           className
         )}
         style={{
@@ -38,8 +33,7 @@ const Suggestions = React.forwardRef<HTMLDivElement, SuggestionsProps>(
 )
 Suggestions.displayName = 'Suggestions'
 
-interface SuggestionProps
-  extends Omit<React.ComponentProps<typeof Button>, 'onClick'> {
+interface SuggestionProps extends Omit<React.ComponentProps<typeof Button>, 'onClick'> {
   suggestion: string
   onClick: (suggestion: string) => void
 }
@@ -52,13 +46,11 @@ const Suggestion = React.forwardRef<HTMLButtonElement, SuggestionProps>(
         variant={variant}
         size={size}
         className={cn(
-          'whitespace-nowrap text-xs sm:text-sm',
+          'w-full text-left justify-start text-xs',
           'hover:bg-accent hover:text-accent-foreground',
           'transition-colors duration-200',
-          'flex-shrink-0',
-          // Ensure touch targets are at least 44x44px on mobile
-          'min-h-[36px] sm:min-h-[32px]',
-          'px-3 py-1.5 sm:px-3 sm:py-1.5',
+          'h-auto min-h-[36px] py-2 px-3',
+          'whitespace-normal break-words',
           className
         )}
         onClick={() => onClick(suggestion)}
@@ -72,4 +64,3 @@ const Suggestion = React.forwardRef<HTMLButtonElement, SuggestionProps>(
 Suggestion.displayName = 'Suggestion'
 
 export { Suggestions, Suggestion }
-

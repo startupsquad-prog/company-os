@@ -35,19 +35,25 @@ export function AgentDock({ onAgentClick, openAgentId }: AgentDockProps) {
     const fetchAgents = async () => {
       try {
         const supabase = createClient()
-        
+
         // First check if user is authenticated
-        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser()
         if (authError || !user) {
           console.error('❌ [AgentDock] Not authenticated:', authError)
           setIsLoading(false)
           return
         }
-        
+
         console.log('🔍 [AgentDock] Fetching agents for user:', user.id)
-        
+
         // Use RPC function to get agents (more reliable than view)
-        const { data, error } = await supabase.rpc('get_ai_agents') as { data: Agent[] | null; error: any }
+        const { data, error } = (await supabase.rpc('get_ai_agents')) as {
+          data: Agent[] | null
+          error: any
+        }
 
         console.log('📊 [AgentDock] Filtered agents query result:', {
           data,
@@ -56,14 +62,16 @@ export function AgentDock({ onAgentClick, openAgentId }: AgentDockProps) {
           hasError: !!error,
           errorType: error?.constructor?.name,
           errorString: error ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : null,
-          errorDetails: error ? {
-            message: error.message,
-            details: error.details,
-            hint: error.hint,
-            code: error.code,
-            status: (error as any).status,
-            statusText: (error as any).statusText
-          } : null
+          errorDetails: error
+            ? {
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                code: error.code,
+                status: (error as any).status,
+                statusText: (error as any).statusText,
+              }
+            : null,
         })
 
         // Check for error OR empty data (both are issues)
@@ -74,7 +82,7 @@ export function AgentDock({ onAgentClick, openAgentId }: AgentDockProps) {
             errorMessage: error.message,
             errorCode: error.code,
             errorDetails: error.details,
-            errorHint: error.hint
+            errorHint: error.hint,
           })
           setAgents([])
         } else if (!data || (data as Agent[]).length === 0) {
@@ -82,7 +90,11 @@ export function AgentDock({ onAgentClick, openAgentId }: AgentDockProps) {
           setAgents([])
         } else {
           const agentList = (data as Agent[]) || []
-          console.log('✅ [AgentDock] Fetched agents:', agentList.length, agentList.map(a => a.name))
+          console.log(
+            '✅ [AgentDock] Fetched agents:',
+            agentList.length,
+            agentList.map((a) => a.name)
+          )
           setAgents(agentList)
         }
       } catch (error) {
@@ -96,9 +108,15 @@ export function AgentDock({ onAgentClick, openAgentId }: AgentDockProps) {
     fetchAgents()
   }, [])
 
-  // Map agent names to 3D icons from the local pack
+  // Map agent names to icons
   const getAgentIcon = (agentName: string): string => {
     const iconMap: Record<string, string> = {
+      'Email Generator':
+        '/ai-agents-icons/1aa2a1f4-b620-414e-8ad3-c0eba625abb3-removebg-preview.png',
+      'WhatsApp Reply Generator':
+        '/ai-agents-icons/3ebccd01-dfed-424f-900a-ed063978b8ac-removebg-preview.png',
+      'Payment Link Generator':
+        '/ai-agents-icons/91cb7dcc-9a18-48f7-9047-0836570df63c-removebg-preview.png',
       'Sales Assistant': '/ai-3d-icons-pack/28_massage ai.png',
       'Ops Helper': '/ai-3d-icons-pack/15_gear.png',
       'Task Master': '/ai-3d-icons-pack/4_book.png',
@@ -106,7 +124,7 @@ export function AgentDock({ onAgentClick, openAgentId }: AgentDockProps) {
       'Data Analyst': '/ai-3d-icons-pack/11_dna.png',
       'Quick Answers': '/ai-3d-icons-pack/1_aichat.png',
     }
-    
+
     return iconMap[agentName] || '/ai-3d-icons-pack/32_ ai robot.png'
   }
 
@@ -187,9 +205,7 @@ export function AgentDock({ onAgentClick, openAgentId }: AgentDockProps) {
                     'transition-all duration-200',
                     'hover:scale-110 active:scale-95',
                     'focus:outline-none',
-                    isOpen
-                      ? 'bg-primary/10'
-                      : 'bg-transparent hover:bg-muted/50'
+                    isOpen ? 'bg-primary/10' : 'bg-transparent hover:bg-muted/50'
                   )}
                   aria-label={`Open ${agent.name}`}
                 >
@@ -225,4 +241,3 @@ export function AgentDock({ onAgentClick, openAgentId }: AgentDockProps) {
     </TooltipProvider>
   )
 }
-

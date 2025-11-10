@@ -23,6 +23,7 @@ Custom schemas (`core`, `common_util`) need to be exposed in Supabase PostgREST 
 Get tasks with optional filters.
 
 **Query Parameters:**
+
 - `status` - Filter by task status
 - `priority` - Filter by priority
 - `department_id` - Filter by department
@@ -33,6 +34,7 @@ Get tasks with optional filters.
 - `due_date_to` - Filter tasks due before this date
 
 **Response:**
+
 ```json
 {
   "data": [
@@ -57,6 +59,7 @@ Get tasks with optional filters.
 Create a new task.
 
 **Request Body:**
+
 ```json
 {
   "title": "string (required)",
@@ -70,6 +73,7 @@ Create a new task.
 ```
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -85,6 +89,7 @@ Create a new task.
 Get a single task by ID.
 
 **Response:**
+
 ```json
 {
   "data": {
@@ -102,6 +107,7 @@ Get a single task by ID.
 Update a task.
 
 **Request Body:**
+
 ```json
 {
   "title": "string",
@@ -119,6 +125,7 @@ Update a task.
 Add a comment to a task.
 
 **Request Body:**
+
 ```json
 {
   "body": "string (required)"
@@ -130,6 +137,7 @@ Add a comment to a task.
 Assign a user to a task.
 
 **Request Body:**
+
 ```json
 {
   "profile_id": "uuid (required)",
@@ -159,6 +167,7 @@ All endpoints respect Supabase Row Level Security (RLS) policies:
 ## Activity Logging
 
 All write operations are automatically logged to `core.activity_events`:
+
 - Task creation
 - Task updates
 - Comment additions
@@ -167,4 +176,3 @@ All write operations are automatically logged to `core.activity_events`:
 ## Status History
 
 Task status changes are automatically logged to `common_util.task_status_history` via database trigger.
-

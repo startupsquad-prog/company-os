@@ -1,5 +1,5 @@
-import { formatDistanceToNow, formatDistance, isPast, differenceInDays, format } from "date-fns"
-import type { TaskFull } from "@/lib/types/tasks"
+import { formatDistanceToNow, formatDistance, isPast, differenceInDays, format } from 'date-fns'
+import type { TaskFull } from '@/lib/types/tasks'
 
 /**
  * Calculate urgency tag for a task
@@ -41,7 +41,7 @@ export function getUrgencyTagConfig(tag: 'overdue' | 'expiring_soon' | null) {
       label: 'Overdue',
       className: 'bg-red-100 text-red-800 border-red-200 hover:bg-red-200',
       color: 'text-red-600',
-      icon: '⚠️'
+      icon: '⚠️',
     }
   }
   if (tag === 'expiring_soon') {
@@ -49,7 +49,7 @@ export function getUrgencyTagConfig(tag: 'overdue' | 'expiring_soon' | null) {
       label: 'Expiring Soon',
       className: 'bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200',
       color: 'text-orange-600',
-      icon: '⏰'
+      icon: '⏰',
     }
   }
   return null
@@ -59,16 +59,19 @@ export function getUrgencyTagConfig(tag: 'overdue' | 'expiring_soon' | null) {
  * Format date with relative time
  * Returns: "MMM dd, yyyy (x days ago)" or "MMM dd, yyyy (in x days)"
  */
-export function formatDateWithRelative(date: Date | string | null, options?: { 
-  showRelative?: boolean
-  futurePrefix?: string
-  pastPrefix?: string
-}): string {
+export function formatDateWithRelative(
+  date: Date | string | null,
+  options?: {
+    showRelative?: boolean
+    futurePrefix?: string
+    pastPrefix?: string
+  }
+): string {
   if (!date) return '—'
-  
+
   const dateObj = typeof date === 'string' ? new Date(date) : date
   const formatted = format(dateObj, 'MMM dd, yyyy')
-  
+
   if (options?.showRelative === false) {
     return formatted
   }
@@ -76,11 +79,9 @@ export function formatDateWithRelative(date: Date | string | null, options?: {
   const now = new Date()
   const isFuture = dateObj > now
   const relative = formatDistanceToNow(dateObj, { addSuffix: true })
-  
-  const prefix = isFuture 
-    ? (options?.futurePrefix || 'in')
-    : (options?.pastPrefix || '')
-  
+
+  const prefix = isFuture ? options?.futurePrefix || 'in' : options?.pastPrefix || ''
+
   return `${formatted} (${prefix ? `${prefix} ` : ''}${relative})`
 }
 
@@ -90,17 +91,17 @@ export function formatDateWithRelative(date: Date | string | null, options?: {
  */
 export function formatDueDateRelative(dueDate: Date | string | null): string | null {
   if (!dueDate) return null
-  
+
   const date = typeof dueDate === 'string' ? new Date(dueDate) : dueDate
   const now = new Date()
   const days = differenceInDays(date, now)
-  
+
   if (days === 0) return 'today'
   if (days === 1) return 'tomorrow'
   if (days === -1) return 'yesterday'
   if (days > 0) return `in ${days} days`
   if (days < 0) return `${Math.abs(days)} days ago`
-  
+
   return null
 }
 
@@ -112,4 +113,3 @@ export function formatCreatedRelative(createdAt: Date | string): string {
   const date = typeof createdAt === 'string' ? new Date(createdAt) : createdAt
   return formatDistanceToNow(date, { addSuffix: true })
 }
-

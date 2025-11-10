@@ -31,6 +31,7 @@ Company OS uses Supabase Auth for authentication with email and password. The sy
 ### Profile Creation
 
 The `core.ensure_profile` RPC function:
+
 - Checks if a profile exists for the user
 - Creates profile if missing (with email, first_name, last_name)
 - Assigns default "viewer" role if user has no role bindings
@@ -62,6 +63,7 @@ Modules are inferred from role level:
 ### Permissions
 
 Permissions are generic actions:
+
 - `read`: Read/view access
 - `create`: Create new records
 - `update`: Update existing records
@@ -76,6 +78,7 @@ Permissions are generic actions:
 Ensures a profile exists and assigns default role if needed.
 
 **Usage:**
+
 ```sql
 SELECT * FROM core.ensure_profile('user-uuid', 'user@example.com');
 ```
@@ -85,6 +88,7 @@ SELECT * FROM core.ensure_profile('user-uuid', 'user@example.com');
 Returns JSON array of user's roles.
 
 **Returns:**
+
 ```json
 [
   {
@@ -100,6 +104,7 @@ Returns JSON array of user's roles.
 Returns JSON array of module names the user can access.
 
 **Returns:**
+
 ```json
 ["common_util", "crm", "ats", "ops", "import_ops"]
 ```
@@ -109,6 +114,7 @@ Returns JSON array of module names the user can access.
 Returns JSON array of permission names for the user.
 
 **Returns:**
+
 ```json
 ["read", "create", "update", "delete", "manage"]
 ```
@@ -133,15 +139,7 @@ The middleware (`src/middleware.ts`) protects routes:
 import { useRole } from '@/lib/roles/use-role'
 
 function MyComponent() {
-  const { 
-    activeRole, 
-    setActiveRole, 
-    roles, 
-    allowedModules, 
-    permissions, 
-    can,
-    loading 
-  } = useRole()
+  const { activeRole, setActiveRole, roles, allowedModules, permissions, can, loading } = useRole()
 
   // Check permission
   if (can('create', 'crm')) {
@@ -220,6 +218,7 @@ npm run test:auth
 ```
 
 This script:
+
 - Signs in each seeded user
 - Fetches dashboard data
 - Verifies RLS filtering works correctly
@@ -241,7 +240,7 @@ This script:
 ### Sidebar shows no modules
 
 - **Cause**: User has no roles or `allowedModules` is empty
-- **Fix**: 
+- **Fix**:
   1. Check user has role bindings: `SELECT * FROM core.user_role_bindings WHERE user_id = '...'`
   2. Verify RPC `get_allowed_modules` returns correct modules
   3. Check RoleContext is loading data correctly
@@ -249,7 +248,7 @@ This script:
 ### Middleware redirect loop
 
 - **Cause**: Session not persisting or cookies not set
-- **Fix**: 
+- **Fix**:
   1. Check Supabase client configuration
   2. Verify cookies are being set in browser
   3. Check middleware matcher config
@@ -276,6 +275,7 @@ This script:
 ### RLS Policies
 
 All tables have RLS enabled. Policies ensure:
+
 - Users can only read their own profiles
 - Users can only read their own role bindings
 - Service role can perform admin operations
@@ -295,4 +295,3 @@ All tables have RLS enabled. Policies ensure:
 - [ ] Explicit module assignments (beyond role inference)
 - [ ] Department-based access control
 - [ ] Custom role creation UI
-

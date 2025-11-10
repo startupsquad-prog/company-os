@@ -1,17 +1,13 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { CalendarIcon } from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CalendarIcon } from 'lucide-react'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 
 interface DataTableDateRangePickerProps {
   onDateRangeChange: (dateRange: { from: Date | undefined; to: Date | undefined }) => void
@@ -29,23 +25,23 @@ export function DataTableDateRangePicker({ onDateRangeChange }: DataTableDateRan
     let to: Date | undefined
 
     switch (preset) {
-      case "today":
+      case 'today':
         from = new Date(now.getFullYear(), now.getMonth(), now.getDate())
         to = new Date(now.getFullYear(), now.getMonth(), now.getDate())
         break
-      case "last7days":
+      case 'last7days':
         from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
         to = now
         break
-      case "last30days":
+      case 'last30days':
         from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
         to = now
         break
-      case "last90days":
+      case 'last90days':
         from = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
         to = now
         break
-      case "all":
+      case 'all':
         from = undefined
         to = undefined
         break
@@ -63,19 +59,18 @@ export function DataTableDateRangePicker({ onDateRangeChange }: DataTableDateRan
             variant="outline"
             size="sm"
             className={cn(
-              "justify-start text-left font-normal",
-              !dateRange.from && "text-muted-foreground"
+              'justify-start text-left font-normal',
+              !dateRange.from && 'text-muted-foreground'
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
             {dateRange.from ? (
               dateRange.to ? (
                 <>
-                  {format(dateRange.from, "LLL dd, y")} -{" "}
-                  {format(dateRange.to, "LLL dd, y")}
+                  {format(dateRange.from, 'LLL dd, y')} - {format(dateRange.to, 'LLL dd, y')}
                 </>
               ) : (
-                format(dateRange.from, "LLL dd, y")
+                format(dateRange.from, 'LLL dd, y')
               )
             ) : (
               <span>Pick a date range</span>
@@ -91,7 +86,9 @@ export function DataTableDateRangePicker({ onDateRangeChange }: DataTableDateRan
                 defaultMonth={dateRange.from}
                 selected={dateRange}
                 onSelect={(range) => {
-                  const newRange = range ? { from: range.from, to: range.to } : { from: undefined, to: undefined }
+                  const newRange = range
+                    ? { from: range.from, to: range.to }
+                    : { from: undefined, to: undefined }
                   setDateRange(newRange)
                   onDateRangeChange(newRange)
                 }}
@@ -100,11 +97,11 @@ export function DataTableDateRangePicker({ onDateRangeChange }: DataTableDateRan
             </CardContent>
             <CardFooter className="flex flex-wrap gap-2 border-t px-4 pb-0 pt-4">
               {[
-                { label: "Today", value: "today" },
-                { label: "Last 7 days", value: "last7days" },
-                { label: "Last 30 days", value: "last30days" },
-                { label: "Last 90 days", value: "last90days" },
-                { label: "All time", value: "all" },
+                { label: 'Today', value: 'today' },
+                { label: 'Last 7 days', value: 'last7days' },
+                { label: 'Last 30 days', value: 'last30days' },
+                { label: 'Last 90 days', value: 'last90days' },
+                { label: 'All time', value: 'all' },
               ].map((preset) => (
                 <Button
                   key={preset.value}
@@ -123,4 +120,3 @@ export function DataTableDateRangePicker({ onDateRangeChange }: DataTableDateRan
     </div>
   )
 }
-

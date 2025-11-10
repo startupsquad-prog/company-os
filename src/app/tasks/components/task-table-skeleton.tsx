@@ -1,7 +1,14 @@
-"use client"
+'use client'
 
-import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 export function TaskTableSkeleton({ columns = 6 }: { columns?: number }) {
   return (
@@ -31,4 +38,3 @@ export function TaskTableSkeleton({ columns = 6 }: { columns?: number }) {
     </div>
   )
 }
-

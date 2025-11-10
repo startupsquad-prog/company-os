@@ -1,12 +1,8 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { auth } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { redirect } from 'next/navigation'
 
 export async function POST() {
-  const supabase = await createServerClient()
-  
-  await supabase.auth.signOut()
-  
-  return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_SUPABASE_URL || 'http://localhost:3000'))
+  // Clerk handles sign-out client-side via UserButton or SignOutButton
+  // This route can be deprecated or removed
+  return NextResponse.json({ message: 'Use Clerk SignOutButton component' }, { status: 200 })
 }
-

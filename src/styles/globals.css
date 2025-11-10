@@ -69,31 +69,93 @@
   }
 
   /* Dark mode scrollbar styling */
-  [data-theme="dark"] *,
+  [data-theme='dark'] *,
   .dark * {
     scrollbar-color: oklch(0.4 0 0 / 0.4) transparent;
   }
 
-  [data-theme="dark"] *::-webkit-scrollbar-thumb,
+  [data-theme='dark'] *::-webkit-scrollbar-thumb,
   .dark *::-webkit-scrollbar-thumb {
     background: oklch(0.4 0 0 / 0.4);
     background-clip: padding-box;
   }
 
-  [data-theme="dark"] *::-webkit-scrollbar-thumb:hover,
+  [data-theme='dark'] *::-webkit-scrollbar-thumb:hover,
   .dark *::-webkit-scrollbar-thumb:hover {
     background: oklch(0.5 0 0 / 0.5);
     background-clip: padding-box;
   }
 
-  [data-theme="dark"] *::-webkit-scrollbar-thumb:active,
+  [data-theme='dark'] *::-webkit-scrollbar-thumb:active,
   .dark *::-webkit-scrollbar-thumb:active {
     background: oklch(0.6 0 0 / 0.6);
     background-clip: padding-box;
   }
 }
 
+@layer base {
+  :root {
+    --color-1: #ff0080;
+    --color-2: #ff8c00;
+    --color-3: #40e0d0;
+    --color-4: #ff0080;
+    --color-5: #ff8c00;
+  }
+
+  [data-theme='dark'],
+  .dark {
+    --color-1: #ff0080;
+    --color-2: #ff8c00;
+    --color-3: #40e0d0;
+    --color-4: #ff0080;
+    --color-5: #ff8c00;
+  }
+}
+
 @layer utilities {
+  /* PWA Safe Area Insets - For devices with notches/home indicators */
+  .safe-area-inset-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .safe-area-inset-left {
+    padding-left: env(safe-area-inset-left, 0);
+  }
+
+  .safe-area-inset-right {
+    padding-right: env(safe-area-inset-right, 0);
+  }
+
+  /* Mobile-specific spacing for bottom navigation */
+  @media (max-width: 767px) {
+    .mobile-content-padding {
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0));
+    }
+
+    /* Enhanced touch targets for mobile - minimum 44x44px */
+    button,
+    a,
+    [role="button"],
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Ensure form inputs are easily tappable */
+    input,
+    textarea,
+    select {
+      min-height: 44px;
+      font-size: 16px; /* Prevents zoom on iOS */
+    }
+  }
+
   /* Animation utilities for smooth transitions */
   .animate-fade-in {
     animation: fadeIn 0.2s ease-in-out;
@@ -105,6 +167,20 @@
 
   .animate-slide-down {
     animation: slideDown 0.3s ease-out;
+  }
+
+  /* Rainbow animation for rainbow button */
+  @keyframes rainbow {
+    0% {
+      background-position: 0%;
+    }
+    100% {
+      background-position: 200%;
+    }
+  }
+
+  .animate-rainbow {
+    animation: rainbow 3s linear infinite;
   }
 
   @keyframes fadeIn {
@@ -156,5 +232,27 @@
     opacity: 0.4;
     filter: blur(3px);
   }
+
+  /* Gradient shift animation for chat bubble text */
+  @keyframes gradient-shift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .animate-gradient-shift {
+    animation: gradient-shift 3s ease infinite;
+  }
 }
 
+/* Clerk UserButton Modal - Compact & Centered */
+@layer components {
+  /* Ensure modal is centered with spacing */
+  /* Revert to Clerk defaults: remove overrides to keep native compact sizing */
+}

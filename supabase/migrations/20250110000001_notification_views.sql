@@ -225,3 +225,4 @@ GRANT EXECUTE ON FUNCTION public.get_unread_notification_count(UUID) TO authenti
 GRANT EXECUTE ON FUNCTION public.mark_all_notifications_read(UUID) TO authenticated;
 
 
+

@@ -70,11 +70,7 @@ const usersToSeed: UserSeed[] = [
 ]
 
 async function getRoleId(roleName: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('roles')
-    .select('id')
-    .eq('name', roleName)
-    .single()
+  const { data, error } = await supabase.from('roles').select('id').eq('name', roleName).single()
 
   if (error || !data) {
     console.error(`❌ Error fetching role "${roleName}":`, error?.message)
@@ -91,7 +87,7 @@ async function seedUser(userSeed: UserSeed): Promise<boolean> {
   try {
     // Check if user already exists
     const { data: existingUsers } = await supabase.auth.admin.listUsers()
-    const existingUser = existingUsers?.users.find(u => u.email === userSeed.email)
+    const existingUser = existingUsers?.users.find((u) => u.email === userSeed.email)
 
     let userId: string
 
@@ -184,19 +180,17 @@ async function seedUser(userSeed: UserSeed): Promise<boolean> {
     }
 
     // Check if the desired role binding already exists
-    const hasDesiredRole = existingBindings?.some(b => b.role_id === roleId) ?? false
+    const hasDesiredRole = existingBindings?.some((b) => b.role_id === roleId) ?? false
 
     if (hasDesiredRole) {
       console.log(`   ⚠️  Role binding already exists for ${userSeed.roleName}`)
     } else {
       // Create role binding
-      const { error: bindingError } = await supabase
-        .from('user_role_bindings')
-        .insert({
-          user_id: userId,
-          role_id: roleId,
-          created_by: userId,
-        })
+      const { error: bindingError } = await supabase.from('user_role_bindings').insert({
+        user_id: userId,
+        role_id: roleId,
+        created_by: userId,
+      })
 
       if (bindingError) {
         console.error(`   ❌ Error creating role binding:`, bindingError.message)
@@ -211,13 +205,11 @@ async function seedUser(userSeed: UserSeed): Promise<boolean> {
     if (!existingBindings || existingBindings.length === 0) {
       const viewerRoleId = await getRoleId('viewer')
       if (viewerRoleId && viewerRoleId !== roleId) {
-        const { error: defaultBindingError } = await supabase
-          .from('user_role_bindings')
-          .insert({
-            user_id: userId,
-            role_id: viewerRoleId,
-            created_by: userId,
-          })
+        const { error: defaultBindingError } = await supabase.from('user_role_bindings').insert({
+          user_id: userId,
+          role_id: viewerRoleId,
+          created_by: userId,
+        })
 
         if (!defaultBindingError) {
           console.log(`   ✓ Assigned default viewer role`)
@@ -263,13 +255,12 @@ async function main() {
 
   console.log('✨ Seeding completed successfully!')
   console.log('\n📋 Test Users:')
-  usersToSeed.forEach(user => {
+  usersToSeed.forEach((user) => {
     console.log(`   • ${user.email} / ${user.password} (${user.roleName})`)
   })
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('💥 Fatal error:', error)
   process.exit(1)
 })
-

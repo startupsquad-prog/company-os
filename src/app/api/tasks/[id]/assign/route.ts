@@ -6,10 +6,7 @@ import { createServerClient } from '@/lib/supabase/server'
  * POST /api/tasks/[id]/assign
  * Assign a user to a task
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
 
@@ -55,7 +52,11 @@ export async function POST(
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 })
     }
 
-    const assignee = await assignUser(id, body.profile_id, role as 'owner' | 'collaborator' | 'watcher')
+    const assignee = await assignUser(
+      id,
+      body.profile_id,
+      role as 'owner' | 'collaborator' | 'watcher'
+    )
 
     return NextResponse.json({ data: assignee }, { status: 201 })
   } catch (error) {
@@ -66,4 +67,3 @@ export async function POST(
     )
   }
 }
-

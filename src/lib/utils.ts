@@ -5,3 +5,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+// Re-export avatar utilities
+export {
+  getDiceBearAvatar,
+  getUserInitials,
+  getUserName,
+} from './utils/avatar'

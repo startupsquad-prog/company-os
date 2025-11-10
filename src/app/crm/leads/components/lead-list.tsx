@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,10 +12,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"
-import { format } from "date-fns"
-import type { LeadFull, LeadStatus } from "@/lib/types/leads"
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react'
+import { format } from 'date-fns'
+import type { LeadFull, LeadStatus } from '@/lib/types/leads'
 
 interface LeadListProps {
   data: LeadFull[]
@@ -27,28 +27,21 @@ interface LeadListProps {
 }
 
 const statusConfig: Record<LeadStatus, { label: string; variant: any }> = {
-  new: { label: "New", variant: "outline" },
-  contacted: { label: "Contacted", variant: "default" },
-  qualified: { label: "Qualified", variant: "default" },
-  proposal: { label: "Proposal", variant: "secondary" },
-  negotiation: { label: "Negotiation", variant: "secondary" },
-  won: { label: "Won", variant: "default" },
-  lost: { label: "Lost", variant: "destructive" },
+  new: { label: 'New', variant: 'outline' },
+  contacted: { label: 'Contacted', variant: 'default' },
+  qualified: { label: 'Qualified', variant: 'default' },
+  proposal: { label: 'Proposal', variant: 'secondary' },
+  negotiation: { label: 'Negotiation', variant: 'secondary' },
+  won: { label: 'Won', variant: 'default' },
+  lost: { label: 'Lost', variant: 'destructive' },
 }
 
-export function LeadList({
-  data,
-  onEdit,
-  onDelete,
-  onView,
-  onStatusChange,
-  onAdd,
-}: LeadListProps) {
+export function LeadList({ data, onEdit, onDelete, onView, onStatusChange, onAdd }: LeadListProps) {
   return (
     <div className="space-y-2">
       {data.map((lead) => {
-        const status = statusConfig[lead.status] || { label: lead.status, variant: "outline" }
-        
+        const status = statusConfig[lead.status] || { label: lead.status, variant: 'outline' }
+
         return (
           <Card key={lead.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-4">
@@ -59,12 +52,13 @@ export function LeadList({
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={lead.owner.avatar_url || undefined} />
                         <AvatarFallback>
-                          {`${lead.owner.first_name?.[0] || ''}${lead.owner.last_name?.[0] || ''}`.toUpperCase() || '?'}
+                          {`${lead.owner.first_name?.[0] || ''}${lead.owner.last_name?.[0] || ''}`.toUpperCase() ||
+                            '?'}
                         </AvatarFallback>
                       </Avatar>
                     )}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <Button
@@ -77,9 +71,7 @@ export function LeadList({
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {lead.company?.name && (
-                        <span>{lead.company.name}</span>
-                      )}
+                      {lead.company?.name && <span>{lead.company.name}</span>}
                       {lead.source && (
                         <span className="capitalize">{lead.source.replace('_', ' ')}</span>
                       )}
@@ -94,7 +86,7 @@ export function LeadList({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex-shrink-0">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -129,7 +121,7 @@ export function LeadList({
           </Card>
         )
       })}
-      
+
       {data.length === 0 && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
@@ -149,4 +141,3 @@ export function LeadList({
     </div>
   )
 }
-

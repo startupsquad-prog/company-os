@@ -1,79 +1,50 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
-import { cookies } from 'next/headers'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+// Define protected routes
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/crm(.*)',
+  '/ats(.*)',
+  '/ops(.*)',
+  '/import-ops(.*)',
+])
 
-  // Skip middleware for API routes, static files, and Next.js internals
-  if (
-    pathname.startsWith('/api/') ||
-    pathname.startsWith('/_next/') ||
-    pathname.startsWith('/_static/') ||
-    pathname.includes('.') // Static files
-  ) {
-    return NextResponse.next()
-  }
+// Define public routes that should redirect if authenticated
+const isPublicRoute = createRouteMatcher(['/login(.*)'])
 
-  // Create Supabase client with cookies
-  const cookieStore = await cookies()
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+export default clerkMiddleware(async (auth, req) => {
+  const { userId } = await auth()
+  const { pathname } = req.nextUrl
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll()
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options)
-        })
-      },
-    },
-  })
-
-  // Check session
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  // Protect authenticated routes (dashboard, crm, ats, ops, etc.)
-  const protectedRoutes = ['/dashboard', '/crm', '/ats', '/ops', '/import-ops']
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
-  
-  if (isProtectedRoute) {
-    if (!session) {
-      // Redirect to login with return URL
-      const redirectUrl = new URL('/login', request.url)
-      redirectUrl.searchParams.set('redirect', pathname)
-      return NextResponse.redirect(redirectUrl)
+  // Allow public routes (login, sign-up) to be accessible
+  // Clerk handles authentication on these routes
+  if (isPublicRoute(req)) {
+    // Only redirect if already authenticated
+    if (userId) {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
+    // Otherwise, allow the request to proceed
     return NextResponse.next()
   }
 
-  // Redirect from /login if already logged in
-  if (pathname.startsWith('/login')) {
-    if (session) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-    return NextResponse.next()
+  // Protect authenticated routes
+  if (isProtectedRoute(req) && !userId) {
+    // Redirect to login with return URL
+    const signInUrl = new URL('/login', req.url)
+    signInUrl.searchParams.set('redirect_url', pathname)
+    return NextResponse.redirect(signInUrl)
   }
 
-  // Allow all other routes
+  // Allow the request to proceed
   return NextResponse.next()
-}
+})
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
   ],
 }
-

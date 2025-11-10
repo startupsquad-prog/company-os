@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { getClerkUserId } from '@/lib/auth/clerk'
 import { markAllAsRead } from '@/lib/notifications/notifications'
 
 /**
@@ -13,25 +13,24 @@ import { markAllAsRead } from '@/lib/notifications/notifications'
  */
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const userId = await getClerkUserId()
 
-    if (!user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const count = await markAllAsRead(user.id)
+    const count = await markAllAsRead(userId)
 
-    return NextResponse.json({ 
-      success: true, 
-      count 
+    return NextResponse.json({
+      success: true,
+      count,
     })
   } catch (error) {
     console.error('Error marking all notifications as read:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to mark all notifications as read' },
+      {
+        error: error instanceof Error ? error.message : 'Failed to mark all notifications as read',
+      },
       { status: 500 }
     )
   }

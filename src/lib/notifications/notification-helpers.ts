@@ -8,7 +8,10 @@ import type { NotificationType, EntityType, NotificationMetadata } from './notif
 /**
  * Build action URL for a notification based on entity type and ID
  */
-export function buildActionUrl(entityType: EntityType | null | undefined, entityId: string | null | undefined): string | null {
+export function buildActionUrl(
+  entityType: EntityType | null | undefined,
+  entityId: string | null | undefined
+): string | null {
   if (!entityType || !entityId) {
     return null
   }
@@ -35,9 +38,10 @@ export function buildNotificationMessage(
   actor?: { name?: string; first_name?: string; last_name?: string }
 ): { title: string; message: string } {
   const entityName = entity.title || entity.name || `#${entity.id?.slice(0, 8)}` || 'item'
-  const actorName = actor?.name || 
-    (actor?.first_name && actor?.last_name 
-      ? `${actor.first_name} ${actor.last_name}` 
+  const actorName =
+    actor?.name ||
+    (actor?.first_name && actor?.last_name
+      ? `${actor.first_name} ${actor.last_name}`
       : actor?.first_name || 'Someone')
 
   const messages: Record<NotificationType, { title: string; message: string }> = {
@@ -103,10 +107,12 @@ export function buildNotificationMessage(
     },
   }
 
-  return messages[type] || {
-    title: 'Notification',
-    message: entityName,
-  }
+  return (
+    messages[type] || {
+      title: 'Notification',
+      message: entityName,
+    }
+  )
 }
 
 /**
@@ -155,7 +161,11 @@ export async function determineRecipients(
 
           if (departmentMembers) {
             for (const member of departmentMembers) {
-              if (member.user_id && member.user_id !== excludeUserId && !recipients.includes(member.user_id)) {
+              if (
+                member.user_id &&
+                member.user_id !== excludeUserId &&
+                !recipients.includes(member.user_id)
+              ) {
                 recipients.push(member.user_id)
               }
             }
@@ -179,18 +189,15 @@ export async function determineRecipients(
  * Parse mentions from text (e.g., "@username" or "@John Doe")
  * Returns array of mentioned user IDs
  */
-export async function parseMentions(
-  supabase: any,
-  text: string
-): Promise<string[]> {
+export async function parseMentions(supabase: any, text: string): Promise<string[]> {
   const mentionRegex = /@(\w+)/g
   const matches = text.match(mentionRegex)
-  
+
   if (!matches) {
     return []
   }
 
-  const mentionedUsernames = matches.map(m => m.slice(1)) // Remove @
+  const mentionedUsernames = matches.map((m) => m.slice(1)) // Remove @
   const mentionedUserIds: string[] = []
 
   try {
@@ -199,7 +206,9 @@ export async function parseMentions(
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name, email')
-        .or(`first_name.ilike.%${username}%,last_name.ilike.%${username}%,email.ilike.%${username}%`)
+        .or(
+          `first_name.ilike.%${username}%,last_name.ilike.%${username}%,email.ilike.%${username}%`
+        )
 
       if (profiles) {
         for (const profile of profiles) {

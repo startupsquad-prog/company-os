@@ -8,14 +8,13 @@ export default function TestPage() {
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Company OS</CardTitle>
-            <CardDescription>
-              Internal platform for managing all departments
-            </CardDescription>
+            <CardDescription>Internal platform for managing all departments</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <p className="text-muted-foreground">
-                Welcome to Company OS. This is a test component to verify TailwindCSS and Shadcn/ui are working correctly.
+                Welcome to Company OS. This is a test component to verify TailwindCSS and Shadcn/ui
+                are working correctly.
               </p>
               <div className="flex gap-2">
                 <Button>Primary Button</Button>
@@ -27,8 +26,7 @@ export default function TestPage() {
                   ✅ TailwindCSS is working
                   <br />
                   ✅ Shadcn/ui components are loaded
-                  <br />
-                  ✅ Theme support is enabled
+                  <br />✅ Theme support is enabled
                 </p>
               </div>
             </div>
@@ -38,4 +36,3 @@ export default function TestPage() {
     </div>
   )
 }
-

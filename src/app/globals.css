@@ -13,15 +13,16 @@
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
-  [data-theme="dark"], .dark {
-    --sidebar-background: oklch(0.1800 0 0);
+  [data-theme='dark'],
+  .dark {
+    --sidebar-background: oklch(0.18 0 0);
     --sidebar-foreground: oklch(1 0 0);
     --sidebar-primary: oklch(1 0 0);
     --sidebar-primary-foreground: oklch(0 0 0);
-    --sidebar-accent: oklch(0.3200 0 0);
+    --sidebar-accent: oklch(0.32 0 0);
     --sidebar-accent-foreground: oklch(1 0 0);
-    --sidebar-border: oklch(0.3200 0 0);
-    --sidebar-ring: oklch(0.7200 0 0);
+    --sidebar-border: oklch(0.32 0 0);
+    --sidebar-ring: oklch(0.72 0 0);
   }
   .dark {
     --sidebar-background: 240 5.9% 10%;
@@ -43,4 +44,3 @@
     @apply bg-background text-foreground;
   }
 }
-

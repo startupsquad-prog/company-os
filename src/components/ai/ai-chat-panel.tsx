@@ -49,7 +49,7 @@ export function AiChatPanel({
   useEffect(() => {
     console.log('📨 [UI] Messages updated:', {
       count: messages.length,
-      messages: messages.map(m => {
+      messages: messages.map((m) => {
         // Extract content from parts array (new AI SDK format)
         let content = ''
         if ((m as any).parts && Array.isArray((m as any).parts)) {
@@ -68,7 +68,7 @@ export function AiChatPanel({
         } else {
           content = String((m as any).content || '')
         }
-        
+
         return {
           id: m.id,
           role: m.role,
@@ -121,11 +121,14 @@ export function AiChatPanel({
       }
 
       // Throttle scroll updates during streaming (every 100ms)
-      scrollTimeoutRef.current = setTimeout(() => {
-        if (messagesEndRef.current && !isUserScrollingRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
-        }
-      }, isStreaming ? 100 : 0)
+      scrollTimeoutRef.current = setTimeout(
+        () => {
+          if (messagesEndRef.current && !isUserScrollingRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+          }
+        },
+        isStreaming ? 100 : 0
+      )
     }
 
     lastMessageCountRef.current = messages.length
@@ -162,7 +165,7 @@ export function AiChatPanel({
   // Handle suggestion click
   const handleSuggestionClick = (suggestion: string) => {
     if (isLoading) return
-    
+
     try {
       append({
         role: 'user',
@@ -253,7 +256,7 @@ export function AiChatPanel({
 
       <CardContent className="flex-1 flex flex-col p-0 overflow-hidden min-h-0 h-full">
         {/* Messages area */}
-        <div 
+        <div
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 min-h-0 scroll-smooth overscroll-contain"
         >
@@ -294,7 +297,7 @@ export function AiChatPanel({
               // UIMessage has: { id, role, parts: Array<UIMessagePart> }
               // UIMessagePart can be TextUIPart { type: 'text', text: string }
               let content = ''
-              
+
               // Check for parts array (new AI SDK format)
               if ((message as any).parts && Array.isArray((message as any).parts)) {
                 content = (message as any).parts
@@ -310,23 +313,25 @@ export function AiChatPanel({
                   })
                   .filter(Boolean) // Remove empty strings
                   .join('')
-              } 
+              }
               // Legacy format: message has content string
               else if (typeof (message as any).content === 'string') {
                 content = (message as any).content
-              } 
+              }
               // Array format
               else if (Array.isArray((message as any).content)) {
                 content = (message as any).content
-                  .map((part: any) => typeof part === 'string' ? part : part.text || part.content || '')
+                  .map((part: any) =>
+                    typeof part === 'string' ? part : part.text || part.content || ''
+                  )
                   .filter(Boolean)
                   .join('')
-              } 
+              }
               // Fallback
               else {
                 content = String((message as any).content || '')
               }
-              
+
               // Log if content is empty to debug
               if (!content) {
                 console.warn('⚠️ [UI] Message has no content:', {
@@ -355,14 +360,18 @@ export function AiChatPanel({
                         : 'bg-muted text-muted-foreground'
                     )}
                   >
-                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words pr-6">{content}</p>
+                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words pr-6">
+                      {content}
+                    </p>
                     {message.role === 'assistant' && (
                       <Button
                         variant="ghost"
                         size="icon"
                         className={cn(
                           'absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity',
-                          message.role === 'assistant' ? 'text-muted-foreground hover:text-foreground' : ''
+                          message.role === 'assistant'
+                            ? 'text-muted-foreground hover:text-foreground'
+                            : ''
                         )}
                         onClick={() => handleCopyMessage(content, message.id)}
                         title="Copy message"

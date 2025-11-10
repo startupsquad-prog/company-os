@@ -17,6 +17,7 @@ src/components/layout/sidebar/
 ## Features
 
 ### ✅ Desktop Sidebar
+
 - Collapsible sidebar (64px collapsed, 256px expanded)
 - Smooth transitions with `duration-300`
 - Hover animations using `animate-fade-in`
@@ -24,17 +25,20 @@ src/components/layout/sidebar/
 - Grouped navigation (Main, Modules, System)
 
 ### ✅ Mobile Sidebar
+
 - Sheet component overlay for mobile
 - Hidden on desktop (`md:hidden`)
 - Trigger button in Topbar
 - Full-width sidebar on mobile
 
 ### ✅ Navigation Structure
+
 - **Main**: Dashboard, Tasks, Knowledge
 - **Modules**: CRM, ATS, Operations, Import Ops
 - **System**: Admin Access
 
 ### ✅ Theme Integration
+
 - All classes use Tailwind tokens:
   - `bg-card`, `bg-background`
   - `text-foreground`, `text-muted-foreground`
@@ -43,6 +47,7 @@ src/components/layout/sidebar/
 - No hard-coded colors
 
 ### ✅ Animations
+
 - Collapse/expand: `transition-all duration-300`
 - Hover states: `transition-all duration-200`
 - Fade-in: `animate-fade-in` (from globals.css)
@@ -50,6 +55,7 @@ src/components/layout/sidebar/
 ## Usage
 
 ### Dashboard Layout
+
 ```tsx
 'use client'
 
@@ -63,10 +69,7 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="flex h-screen bg-background">
       <aside className="hidden md:block">
-        <Sidebar
-          isCollapsed={isCollapsed}
-          onCollapse={() => setIsCollapsed(!isCollapsed)}
-        />
+        <Sidebar isCollapsed={isCollapsed} onCollapse={() => setIsCollapsed(!isCollapsed)} />
       </aside>
       {/* ... */}
     </div>
@@ -75,6 +78,7 @@ export default function DashboardLayout({ children }) {
 ```
 
 ### Mobile Sidebar
+
 The mobile sidebar is automatically included in the Topbar component and only shows on mobile devices.
 
 ## Responsive Behavior
@@ -119,4 +123,3 @@ const navigation = [
 ✅ Collapse toggle with animations  
 ✅ Responsive with Sheet for mobile  
 ✅ Hover states and transitions working
-

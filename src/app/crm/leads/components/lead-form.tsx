@@ -1,27 +1,27 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
+import { useState, useEffect } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { useForm } from "react-hook-form"
-import { toast } from "sonner"
-import type { LeadFull, CreateLeadInput, LeadStatus } from "@/lib/types/leads"
+} from '@/components/ui/select'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import type { LeadFull, CreateLeadInput, LeadStatus } from '@/lib/types/leads'
 
 interface LeadFormProps {
   lead: LeadFull | null
@@ -51,7 +51,9 @@ const sourceOptions = [
 
 export function LeadForm({ lead, open, onOpenChange, onSuccess }: LeadFormProps) {
   const [loading, setLoading] = useState(false)
-  const { register, handleSubmit, reset, setValue, watch } = useForm<CreateLeadInput & { contact_name?: string; company_name?: string }>()
+  const { register, handleSubmit, reset, setValue, watch } = useForm<
+    CreateLeadInput & { contact_name?: string; company_name?: string }
+  >()
 
   useEffect(() => {
     if (lead) {
@@ -76,7 +78,7 @@ export function LeadForm({ lead, open, onOpenChange, onSuccess }: LeadFormProps)
   const onSubmit = async (data: any) => {
     try {
       setLoading(true)
-      
+
       const payload: CreateLeadInput = {
         status: data.status || 'new',
         source: data.source || null,
@@ -84,7 +86,11 @@ export function LeadForm({ lead, open, onOpenChange, onSuccess }: LeadFormProps)
         probability: data.probability ? parseInt(data.probability) : null,
         expected_close_date: data.expected_close_date || null,
         notes: data.notes || null,
-        tags: data.tags ? (Array.isArray(data.tags) ? data.tags : data.tags.split(',').map(t => t.trim())) : null,
+        tags: data.tags
+          ? Array.isArray(data.tags)
+            ? data.tags
+            : data.tags.split(',').map((t) => t.trim())
+          : null,
       }
 
       const url = lead ? `/api/crm/leads/${lead.id}` : '/api/crm/leads'
@@ -159,7 +165,7 @@ export function LeadForm({ lead, open, onOpenChange, onSuccess }: LeadFormProps)
               </Select>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="value">Value ($)</Label>
@@ -186,11 +192,7 @@ export function LeadForm({ lead, open, onOpenChange, onSuccess }: LeadFormProps)
 
           <div className="space-y-2">
             <Label htmlFor="expected_close_date">Expected Close Date</Label>
-            <Input
-              id="expected_close_date"
-              type="date"
-              {...register('expected_close_date')}
-            />
+            <Input id="expected_close_date" type="date" {...register('expected_close_date')} />
           </div>
 
           <div className="space-y-2">
@@ -205,19 +207,11 @@ export function LeadForm({ lead, open, onOpenChange, onSuccess }: LeadFormProps)
 
           <div className="space-y-2">
             <Label htmlFor="tags">Tags (comma-separated)</Label>
-            <Input
-              id="tags"
-              {...register('tags')}
-              placeholder="enterprise, hot, priority"
-            />
+            <Input id="tags" {...register('tags')} placeholder="enterprise, hot, priority" />
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
@@ -229,4 +223,3 @@ export function LeadForm({ lead, open, onOpenChange, onSuccess }: LeadFormProps)
     </Dialog>
   )
 }
-

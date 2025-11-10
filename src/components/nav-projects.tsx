@@ -1,13 +1,7 @@
-"use client"
+'use client'
 
-import { TransitionLink } from "@/components/common/TransitionLink"
-import {
-  Folder,
-  Forward,
-  MoreHorizontal,
-  Trash2,
-  type LucideIcon,
-} from "lucide-react"
+import { TransitionLink } from '@/components/common/TransitionLink'
+import { Folder, Forward, MoreHorizontal, Trash2, type LucideIcon } from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -15,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -24,7 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
+} from '@/components/ui/sidebar'
 
 export function NavProjects({
   projects,
@@ -33,6 +27,7 @@ export function NavProjects({
     name: string
     url: string
     icon: LucideIcon
+    comingSoon?: boolean
   }[]
 }) {
   const { isMobile } = useSidebar()
@@ -44,9 +39,14 @@ export function NavProjects({
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
-              <TransitionLink href={item.url}>
+              <TransitionLink href={item.url} className="relative flex items-center gap-1.5">
                 <item.icon />
-                <span>{item.name}</span>
+                <span className="flex-1">{item.name}</span>
+                {item.comingSoon && (
+                  <span className="text-[9px] leading-none bg-yellow-50 text-yellow-600 border border-yellow-200 rounded px-1 py-0.5 font-medium">
+                    Soon
+                  </span>
+                )}
               </TransitionLink>
             </SidebarMenuButton>
             <DropdownMenu>
@@ -58,8 +58,8 @@ export function NavProjects({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 className="w-48 rounded-lg"
-                side={isMobile ? "bottom" : "right"}
-                align={isMobile ? "end" : "start"}
+                side={isMobile ? 'bottom' : 'right'}
+                align={isMobile ? 'end' : 'start'}
               >
                 <DropdownMenuItem>
                   <Folder className="text-muted-foreground" />

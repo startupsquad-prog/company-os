@@ -52,7 +52,7 @@ export async function createNotificationsForUsers(
   // Build action URL if not provided
   const actionUrl = data.action_url || buildActionUrl(data.entity_type, data.entity_id)
 
-  const notifications = userIds.map(userId => ({
+  const notifications = userIds.map((userId) => ({
     ...data,
     user_id: userId,
     action_url: actionUrl,
@@ -158,7 +158,7 @@ export async function markAllAsRead(userId: string): Promise<number> {
 
   // Use the database function for efficiency
   const { data, error } = await supabase.rpc('mark_all_notifications_read', {
-    user_id_param: userId,
+    p_user_id: userId,
   })
 
   if (error) {
@@ -196,7 +196,7 @@ export async function getUnreadCount(userId: string): Promise<number> {
 
   // Use the database function for efficiency
   const { data, error } = await supabase.rpc('get_unread_notification_count', {
-    user_id_param: userId,
+    p_user_id: userId,
   })
 
   if (error) {

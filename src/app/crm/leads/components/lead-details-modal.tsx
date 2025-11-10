@@ -1,23 +1,18 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import type { LeadFull, Interaction, StatusHistoryEntry } from "@/lib/types/leads"
-import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
-import { Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState, useEffect, useCallback } from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
+import type { LeadFull, Interaction, StatusHistoryEntry } from '@/lib/types/leads'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
+import { Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface LeadDetailsModalProps {
   lead: LeadFull | null
@@ -52,7 +47,8 @@ export function LeadDetailsModal({
       // Fetch interactions
       const { data: interactionsData } = await supabase
         .from('interactions')
-        .select(`
+        .select(
+          `
           *,
           created_by_profile:profiles(
             id,
@@ -61,7 +57,8 @@ export function LeadDetailsModal({
             email,
             avatar_url
           )
-        `)
+        `
+        )
         .eq('entity_type', 'lead')
         .eq('entity_id', lead.id)
         .is('deleted_at', null)
@@ -72,7 +69,8 @@ export function LeadDetailsModal({
       // Fetch status history
       const { data: historyData } = await supabase
         .from('status_history')
-        .select(`
+        .select(
+          `
           *,
           created_by_profile:profiles(
             id,
@@ -80,7 +78,8 @@ export function LeadDetailsModal({
             last_name,
             email
           )
-        `)
+        `
+        )
         .eq('lead_id', lead.id)
         .order('created_at', { ascending: false })
 
@@ -113,25 +112,23 @@ export function LeadDetailsModal({
   if (!lead) return null
 
   const statusConfig: Record<string, { label: string; variant: any }> = {
-    new: { label: "New", variant: "outline" },
-    contacted: { label: "Contacted", variant: "default" },
-    qualified: { label: "Qualified", variant: "default" },
-    proposal: { label: "Proposal", variant: "secondary" },
-    negotiation: { label: "Negotiation", variant: "secondary" },
-    won: { label: "Won", variant: "default" },
-    lost: { label: "Lost", variant: "destructive" },
+    new: { label: 'New', variant: 'outline' },
+    contacted: { label: 'Contacted', variant: 'default' },
+    qualified: { label: 'Qualified', variant: 'default' },
+    proposal: { label: 'Proposal', variant: 'secondary' },
+    negotiation: { label: 'Negotiation', variant: 'secondary' },
+    won: { label: 'Won', variant: 'default' },
+    lost: { label: 'Lost', variant: 'destructive' },
   }
 
-  const status = statusConfig[lead.status] || { label: lead.status, variant: "outline" }
+  const status = statusConfig[lead.status] || { label: lead.status, variant: 'outline' }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogTitle className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-xl font-semibold">
-              {lead.contact?.name || 'Unnamed Lead'}
-            </span>
+            <span className="text-xl font-semibold">{lead.contact?.name || 'Unnamed Lead'}</span>
             <Badge variant={status.variant}>{status.label}</Badge>
           </div>
           <div className="flex items-center gap-2">
@@ -159,19 +156,13 @@ export function LeadDetailsModal({
               <Edit className="mr-2 h-4 w-4" />
               Edit
             </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => onDelete?.(lead)}
-            >
+            <Button variant="destructive" size="sm" onClick={() => onDelete?.(lead)}>
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </Button>
           </div>
         </DialogTitle>
-        <DialogDescription>
-          Lead details and activity history
-        </DialogDescription>
+        <DialogDescription>Lead details and activity history</DialogDescription>
 
         <Tabs defaultValue="overview" className="w-full">
           <TabsList>
@@ -226,11 +217,14 @@ export function LeadDetailsModal({
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={lead.owner.avatar_url || undefined} />
                       <AvatarFallback>
-                        {`${lead.owner.first_name?.[0] || ''}${lead.owner.last_name?.[0] || ''}`.toUpperCase() || '?'}
+                        {`${lead.owner.first_name?.[0] || ''}${lead.owner.last_name?.[0] || ''}`.toUpperCase() ||
+                          '?'}
                       </AvatarFallback>
                     </Avatar>
                     <span>
-                      {`${lead.owner.first_name || ''} ${lead.owner.last_name || ''}`.trim() || lead.owner.email || 'Unknown'}
+                      {`${lead.owner.first_name || ''} ${lead.owner.last_name || ''}`.trim() ||
+                        lead.owner.email ||
+                        'Unknown'}
                     </span>
                   </div>
                 ) : (
@@ -300,10 +294,13 @@ export function LeadDetailsModal({
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           {interaction.created_by_profile && (
                             <span>
-                              {`${interaction.created_by_profile.first_name || ''} ${interaction.created_by_profile.last_name || ''}`.trim() || interaction.created_by_profile.email}
+                              {`${interaction.created_by_profile.first_name || ''} ${interaction.created_by_profile.last_name || ''}`.trim() ||
+                                interaction.created_by_profile.email}
                             </span>
                           )}
-                          <span>{format(new Date(interaction.created_at), 'MMM d, yyyy h:mm a')}</span>
+                          <span>
+                            {format(new Date(interaction.created_at), 'MMM d, yyyy h:mm a')}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -316,9 +313,7 @@ export function LeadDetailsModal({
           <TabsContent value="history" className="mt-4">
             <div className="space-y-4">
               {statusHistory.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No status history
-                </p>
+                <p className="text-sm text-muted-foreground text-center py-8">No status history</p>
               ) : (
                 statusHistory.map((entry) => (
                   <div key={entry.id} className="border rounded-lg p-4">
@@ -338,7 +333,8 @@ export function LeadDetailsModal({
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           {entry.created_by_profile && (
                             <span>
-                              {`${entry.created_by_profile.first_name || ''} ${entry.created_by_profile.last_name || ''}`.trim() || entry.created_by_profile.email}
+                              {`${entry.created_by_profile.first_name || ''} ${entry.created_by_profile.last_name || ''}`.trim() ||
+                                entry.created_by_profile.email}
                             </span>
                           )}
                           <span>{format(new Date(entry.created_at), 'MMM d, yyyy h:mm a')}</span>
@@ -358,9 +354,7 @@ export function LeadDetailsModal({
                   <p className="text-sm whitespace-pre-wrap">{lead.notes}</p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No notes added yet
-                </p>
+                <p className="text-sm text-muted-foreground text-center py-8">No notes added yet</p>
               )}
             </div>
           </TabsContent>
@@ -369,4 +363,3 @@ export function LeadDetailsModal({
     </Dialog>
   )
 }
-

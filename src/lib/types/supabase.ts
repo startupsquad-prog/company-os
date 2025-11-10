@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
   core: {
@@ -262,4 +256,3 @@ export type TaskWithRelations = Task & {
   created_by_profile: Profile | null
   updated_by_profile: Profile | null
 }
-

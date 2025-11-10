@@ -3,6 +3,7 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
 
 const STORAGE_PREFIX = 'agent-chat-session-'
@@ -20,25 +21,15 @@ type Agent = {
 }
 
 export function useAgentChat(agentId: string | null) {
-  const [userId, setUserId] = useState<string | null>(null)
+  const { user: clerkUser } = useUser()
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [agent, setAgent] = useState<Agent | null>(null)
   const [isLoadingAgent, setIsLoadingAgent] = useState(true)
 
-  // Get user ID for localStorage key
-  useEffect(() => {
-    const getUserId = async () => {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setUserId(user?.id || null)
-    }
-    getUserId()
-  }, [])
+  const userId = clerkUser?.id || null
 
-  // Fetch agent from database
+  // Fetch agent from database via API route (server-side handles RLS)
   useEffect(() => {
     if (!agentId) {
       setIsLoadingAgent(false)
@@ -47,33 +38,28 @@ export function useAgentChat(agentId: string | null) {
 
     const fetchAgent = async () => {
       try {
-        const supabase = createClient()
-        
-        // Try using public view first
-        const { data, error } = await supabase
-          .from('ai_agents')
-          .select('*')
-          .eq('id', agentId)
-          .eq('is_active', true)
-          .is('deleted_at', null)
-          .single()
+        // Use API route which handles authentication and RLS server-side
+        const response = await fetch(`/api/ai/agents?agentId=${agentId}`)
 
-        if (error) {
-          console.error('Error fetching agent:', {
-            message: error.message,
-            code: error.code,
-            details: error.details,
-            hint: error.hint
-          })
-          setAgent(null)
-        } else if (!data) {
-          console.warn('Agent not found:', agentId)
-          setAgent(null)
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.warn('Agent not found:', agentId)
+            setAgent(null)
+          } else {
+            console.warn('Error fetching agent:', response.statusText)
+            setAgent(null)
+          }
+          return
+        }
+
+        const result = await response.json()
+        if (result.data) {
+          setAgent(result.data as Agent)
         } else {
-          setAgent(data as Agent)
+          setAgent(null)
         }
       } catch (error) {
-        console.error('Exception fetching agent:', error)
+        console.warn('Exception fetching agent:', error)
         setAgent(null)
       } finally {
         setIsLoadingAgent(false)
@@ -83,12 +69,12 @@ export function useAgentChat(agentId: string | null) {
     fetchAgent()
   }, [agentId])
 
-  // Create transport with agentId query parameter
+  // Create transport with chatflow endpoint for isolated agent context
   const transport = useMemo(() => {
     if (!agentId) return null
-    
+
     return new DefaultChatTransport({
-      api: `/api/ai/chat?agentId=${agentId}`,
+      api: `/api/ai/chatflow/${agentId}`,
     })
   }, [agentId])
 
@@ -101,36 +87,45 @@ export function useAgentChat(agentId: string | null) {
   })
 
   // Handle input change
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setInput(e.target.value)
-  }, [])
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setInput(e.target.value)
+    },
+    []
+  )
 
   // Handle form submission
-  const handleSubmit = useCallback((e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault()
-    if (!input.trim() || chat.status === 'streaming' || !transport) {
-      return
-    }
-    
-    chat.sendMessage({
-      text: input.trim(),
-    })
-    
-    setInput('')
-  }, [input, chat, transport])
+  const handleSubmit = useCallback(
+    (e?: React.FormEvent<HTMLFormElement>) => {
+      e?.preventDefault()
+      if (!input.trim() || chat.status === 'streaming' || !transport) {
+        return
+      }
+
+      chat.sendMessage({
+        text: input.trim(),
+      })
+
+      setInput('')
+    },
+    [input, chat, transport]
+  )
 
   // Append message (for suggestions)
-  const append = useCallback((message: { role: 'user' | 'assistant'; content: string }) => {
-    if (message.role === 'user' && transport) {
-      chat.sendMessage({
-        text: message.content,
-      })
-    }
-  }, [chat, transport])
+  const append = useCallback(
+    (message: { role: 'user' | 'assistant'; content: string }) => {
+      if (message.role === 'user' && transport) {
+        chat.sendMessage({
+          text: message.content,
+        })
+      }
+    },
+    [chat, transport]
+  )
 
   // Load messages from localStorage on mount (per agent)
   const [hasRestored, setHasRestored] = useState(false)
-  
+
   useEffect(() => {
     if (!userId || !agentId || hasRestored) return
 
@@ -193,4 +188,3 @@ export function useAgentChat(agentId: string | null) {
     userId,
   }
 }
-

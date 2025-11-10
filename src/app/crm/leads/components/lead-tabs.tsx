@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DataTable } from "@/components/data-table/data-table"
-import { LeadKanban } from "./lead-kanban"
-import { LeadList } from "./lead-list"
-import type { LeadFull } from "@/lib/types/leads"
-import type { ColumnDef, SortingState, ColumnFiltersState } from "@tanstack/react-table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { DataTable } from '@/components/data-table/data-table'
+import { LeadKanban } from './lead-kanban'
+import { LeadList } from './lead-list'
+import type { LeadFull } from '@/lib/types/leads'
+import type { ColumnDef, SortingState, ColumnFiltersState } from '@tanstack/react-table'
 
 interface LeadTabsProps {
   defaultView?: 'kanban' | 'table' | 'list'
@@ -58,7 +58,7 @@ export function LeadTabs({
 }: LeadTabsProps) {
   return (
     <Tabs defaultValue={defaultView} className="w-full">
-      <TabsList>
+      <TabsList className="w-fit">
         <TabsTrigger value="table">Table</TabsTrigger>
         <TabsTrigger value="kanban">Kanban</TabsTrigger>
         <TabsTrigger value="list">List</TabsTrigger>
@@ -113,4 +113,3 @@ export function LeadTabs({
     </Tabs>
   )
 }
-

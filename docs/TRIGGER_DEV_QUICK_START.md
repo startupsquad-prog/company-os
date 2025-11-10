@@ -9,11 +9,13 @@ This means the **Trigger.dev dev server is not running** or not connected.
 ### Step 1: Open Two Terminals
 
 **Terminal 1 - Next.js Dev Server:**
+
 ```bash
 npm run dev
 ```
 
 **Terminal 2 - Trigger.dev Dev Server (REQUIRED!):**
+
 ```bash
 npm run dev:trigger
 ```
@@ -21,6 +23,7 @@ npm run dev:trigger
 ### Step 2: Verify It's Running
 
 You should see in Terminal 2:
+
 ```
 ✓ Trigger.dev dev server is running
 ✓ Connected to Trigger.dev cloud
@@ -49,6 +52,7 @@ This will trigger a test task. Check the Trigger.dev dashboard to see if it exec
 **Cause:** Dev server not running or not connected
 
 **Fix:**
+
 1. Stop the dev server (Ctrl+C)
 2. Restart: `npm run dev:trigger`
 3. Wait for "✓ Connected" message
@@ -59,6 +63,7 @@ This will trigger a test task. Check the Trigger.dev dashboard to see if it exec
 **Cause:** Task not exported or file not in correct directory
 
 **Fix:**
+
 1. Check `src/trigger/ai-chat-agent.ts` exists
 2. Verify it exports: `export const aiChatAgent = task({...})`
 3. Check task ID matches: `id: "ai-chat-agent"`
@@ -69,6 +74,7 @@ This will trigger a test task. Check the Trigger.dev dashboard to see if it exec
 **Cause:** `.env.local` not loaded in Trigger.dev context
 
 **Fix:**
+
 1. Check `.env.local` has `OPENROUTER_API_KEY`
 2. Restart Trigger.dev dev server after adding env vars
 3. Verify in task logs: `hasOpenRouterKey: true`
@@ -122,9 +128,9 @@ The API route sends this exact structure, so payload should be fine.
 ## Next Steps
 
 Once tasks are executing:
+
 1. Check logs in Trigger.dev dashboard
 2. Verify AI responses are being generated
 3. Monitor task performance
 4. Add more complex agentic workflows
-
 

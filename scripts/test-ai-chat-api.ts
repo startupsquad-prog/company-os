@@ -1,9 +1,9 @@
 /**
  * Test script for AI Chat API endpoint
  * Tests /api/ai/chat with proper authentication
- * 
+ *
  * Usage: tsx scripts/test-ai-chat-api.ts
- * 
+ *
  * Prerequisites:
  * 1. Start your Next.js dev server: npm run dev
  * 2. Make sure OPENROUTER_API_KEY is set in .env.local
@@ -125,4 +125,3 @@ async function testChatAPI() {
 }
 
 testChatAPI()
-

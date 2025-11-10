@@ -1,13 +1,13 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { Plus } from "lucide-react"
-import type { LeadFull, LeadStatus } from "@/lib/types/leads"
-import { format } from "date-fns"
+import { useState } from 'react'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
+import type { LeadFull, LeadStatus } from '@/lib/types/leads'
+import { format } from 'date-fns'
 
 interface LeadKanbanProps {
   data: LeadFull[]
@@ -19,16 +19,24 @@ interface LeadKanbanProps {
   onAdd?: () => void
 }
 
-const statusOrder: LeadStatus[] = ['new', 'contacted', 'qualified', 'proposal', 'negotiation', 'won', 'lost']
+const statusOrder: LeadStatus[] = [
+  'new',
+  'contacted',
+  'qualified',
+  'proposal',
+  'negotiation',
+  'won',
+  'lost',
+]
 
 const statusConfig: Record<LeadStatus, { label: string; color: string }> = {
-  new: { label: "New", color: "bg-gray-100" },
-  contacted: { label: "Contacted", color: "bg-blue-100" },
-  qualified: { label: "Qualified", color: "bg-green-100" },
-  proposal: { label: "Proposal", color: "bg-yellow-100" },
-  negotiation: { label: "Negotiation", color: "bg-orange-100" },
-  won: { label: "Won", color: "bg-green-200" },
-  lost: { label: "Lost", color: "bg-red-100" },
+  new: { label: 'New', color: 'bg-gray-100' },
+  contacted: { label: 'Contacted', color: 'bg-blue-100' },
+  qualified: { label: 'Qualified', color: 'bg-green-100' },
+  proposal: { label: 'Proposal', color: 'bg-yellow-100' },
+  negotiation: { label: 'Negotiation', color: 'bg-orange-100' },
+  won: { label: 'Won', color: 'bg-green-200' },
+  lost: { label: 'Lost', color: 'bg-red-100' },
 }
 
 export function LeadKanban({
@@ -43,10 +51,13 @@ export function LeadKanban({
   const [draggedLead, setDraggedLead] = useState<LeadFull | null>(null)
 
   // Group leads by status
-  const leadsByStatus = statusOrder.reduce((acc, status) => {
-    acc[status] = data.filter((lead) => lead.status === status)
-    return acc
-  }, {} as Record<LeadStatus, LeadFull[]>)
+  const leadsByStatus = statusOrder.reduce(
+    (acc, status) => {
+      acc[status] = data.filter((lead) => lead.status === status)
+      return acc
+    },
+    {} as Record<LeadStatus, LeadFull[]>
+  )
 
   const handleDragStart = (lead: LeadFull) => {
     setDraggedLead(lead)
@@ -68,7 +79,7 @@ export function LeadKanban({
       {statusOrder.map((status) => {
         const leads = leadsByStatus[status] || []
         const config = statusConfig[status]
-        
+
         return (
           <div
             key={status}
@@ -87,12 +98,7 @@ export function LeadKanban({
                     </Badge>
                   </div>
                   {onAdd && status === 'new' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={onAdd}
-                      className="h-6 w-6 p-0"
-                    >
+                    <Button variant="ghost" size="sm" onClick={onAdd} className="h-6 w-6 p-0">
                       <Plus className="h-4 w-4" />
                     </Button>
                   )}
@@ -114,24 +120,21 @@ export function LeadKanban({
                             {lead.contact?.name || 'Unnamed Lead'}
                           </p>
                           {lead.company?.name && (
-                            <p className="text-xs text-muted-foreground">
-                              {lead.company.name}
-                            </p>
+                            <p className="text-xs text-muted-foreground">{lead.company.name}</p>
                           )}
                         </div>
-                        
+
                         {lead.value && (
-                          <p className="text-sm font-semibold">
-                            ${lead.value.toLocaleString()}
-                          </p>
+                          <p className="text-sm font-semibold">${lead.value.toLocaleString()}</p>
                         )}
-                        
+
                         <div className="flex items-center justify-between">
                           {lead.owner && (
                             <Avatar className="h-6 w-6">
                               <AvatarImage src={lead.owner.avatar_url || undefined} />
                               <AvatarFallback className="text-xs">
-                                {`${lead.owner.first_name?.[0] || ''}${lead.owner.last_name?.[0] || ''}`.toUpperCase() || '?'}
+                                {`${lead.owner.first_name?.[0] || ''}${lead.owner.last_name?.[0] || ''}`.toUpperCase() ||
+                                  '?'}
                               </AvatarFallback>
                             </Avatar>
                           )}
@@ -145,17 +148,12 @@ export function LeadKanban({
                     </CardContent>
                   </Card>
                 ))}
-                
+
                 {leads.length === 0 && (
                   <div className="text-center text-sm text-muted-foreground py-8">
                     <p>No leads in this stage</p>
                     {onAdd && status === 'new' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onAdd}
-                        className="mt-2"
-                      >
+                      <Button variant="outline" size="sm" onClick={onAdd} className="mt-2">
                         <Plus className="mr-2 h-4 w-4" />
                         Add Lead
                       </Button>
@@ -170,4 +168,3 @@ export function LeadKanban({
     </div>
   )
 }
-

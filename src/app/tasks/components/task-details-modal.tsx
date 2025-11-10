@@ -1,24 +1,14 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { useState, useEffect, useCallback } from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   CheckCircle2,
   Calendar,
@@ -42,12 +32,12 @@ import {
   Download,
   Upload,
   FileText,
-} from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import type { TaskFull } from "@/lib/types/tasks"
-import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
+} from 'lucide-react'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
+import type { TaskFull } from '@/lib/types/tasks'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 
 interface TaskDetailsModalProps {
   task: TaskFull | null
@@ -125,22 +115,22 @@ export function TaskDetailsModal({
 }: TaskDetailsModalProps) {
   const [comments, setComments] = useState<TaskComment[]>([])
   const [activities, setActivities] = useState<ActivityEvent[]>([])
-  const [commentText, setCommentText] = useState("")
+  const [commentText, setCommentText] = useState('')
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
   const [loading, setLoading] = useState(false)
   const [isStarred, setIsStarred] = useState((task as any)?.is_starred || false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
-  const [editedTitle, setEditedTitle] = useState(task?.title || "")
+  const [editedTitle, setEditedTitle] = useState(task?.title || '')
   const [isSavingTitle, setIsSavingTitle] = useState(false)
-  
+
   // New state for subtasks, attachments, deliverables
   const [subtasks, setSubtasks] = useState<Subtask[]>([])
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [deliverables, setDeliverables] = useState<Deliverable[]>([])
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState("")
-  const [newDeliverableTitle, setNewDeliverableTitle] = useState("")
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('')
+  const [newDeliverableTitle, setNewDeliverableTitle] = useState('')
   const [isEditingDescription, setIsEditingDescription] = useState(false)
-  const [editedDescription, setEditedDescription] = useState(task?.description || "")
+  const [editedDescription, setEditedDescription] = useState(task?.description || '')
   const [uploadingFile, setUploadingFile] = useState(false)
 
   const fetchComments = useCallback(async () => {
@@ -149,8 +139,9 @@ export function TaskDetailsModal({
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from("task_comments")
-        .select(`
+        .from('task_comments')
+        .select(
+          `
           *,
           author:profiles(
             id,
@@ -159,12 +150,13 @@ export function TaskDetailsModal({
             email,
             avatar_url
           )
-        `)
-        .eq("task_id", task.id)
-        .order("created_at", { ascending: false })
+        `
+        )
+        .eq('task_id', task.id)
+        .order('created_at', { ascending: false })
 
       if (error) {
-        console.error("Error fetching comments:", error)
+        console.error('Error fetching comments:', error)
         setComments([])
         return
       }
@@ -175,16 +167,16 @@ export function TaskDetailsModal({
           body: c.body,
           created_at: c.created_at,
           author: c.author || {
-            id: "",
+            id: '',
             first_name: null,
             last_name: null,
-            email: "Unknown",
+            email: 'Unknown',
             avatar_url: null,
           },
         }))
       )
     } catch (error) {
-      console.error("Error fetching comments:", error)
+      console.error('Error fetching comments:', error)
       setComments([])
     }
   }, [task])
@@ -194,19 +186,19 @@ export function TaskDetailsModal({
 
     try {
       const supabase = createClient()
-      
+
       // Try direct query to activity_events (may be in core schema or accessible via view)
       // If that fails, gracefully handle and show empty activities
       let events: any[] = []
       let eventsError: any = null
-      
+
       try {
         const result = await supabase
-          .from("activity_events")
-          .select("*")
-          .eq("entity_type", "task")
-          .eq("entity_id", task.id)
-          .order("created_at", { ascending: false })
+          .from('activity_events')
+          .select('*')
+          .eq('entity_type', 'task')
+          .eq('entity_id', task.id)
+          .order('created_at', { ascending: false })
           .limit(50)
         events = result.data || []
         eventsError = result.error
@@ -218,13 +210,19 @@ export function TaskDetailsModal({
       // If table doesn't exist or isn't accessible, gracefully handle it
       if (eventsError) {
         // Check if it's a "relation does not exist" error
-        if (eventsError.code === '42P01' || eventsError.message?.includes('does not exist') || eventsError.message?.includes('permission denied')) {
-          console.warn("Activity events table not accessible. This feature may not be configured yet.")
+        if (
+          eventsError.code === '42P01' ||
+          eventsError.message?.includes('does not exist') ||
+          eventsError.message?.includes('permission denied')
+        ) {
+          console.warn(
+            'Activity events table not accessible. This feature may not be configured yet.'
+          )
           setActivities([])
           return
         }
         // Don't throw, just log and set empty
-        console.warn("Error fetching activities:", eventsError)
+        console.warn('Error fetching activities:', eventsError)
         setActivities([])
         return
       }
@@ -238,16 +236,16 @@ export function TaskDetailsModal({
       // Get profiles for each event
       // activity_events.created_by references auth.users(id), not profiles.id
       const userIds = [...new Set((events || []).map((e: any) => e.created_by).filter(Boolean))]
-      
+
       let profilesMap: Record<string, any> = {}
       if (userIds.length > 0) {
         const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name, email, avatar_url, user_id")
-          .in("user_id", userIds)
-        
+          .from('profiles')
+          .select('id, first_name, last_name, email, avatar_url, user_id')
+          .in('user_id', userIds)
+
         if (profilesError) {
-          console.warn("Error fetching profiles for activities:", profilesError)
+          console.warn('Error fetching profiles for activities:', profilesError)
         } else if (profiles) {
           // Map by user_id (from auth.users) to profile
           profilesMap = profiles.reduce((acc: any, p: any) => {
@@ -268,18 +266,19 @@ export function TaskDetailsModal({
       )
     } catch (error) {
       // Better error logging
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : typeof error === 'object' && error !== null
-        ? JSON.stringify(error, Object.getOwnPropertyNames(error))
-        : String(error)
-      
-      console.error("Error fetching activities:", {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error !== null
+            ? JSON.stringify(error, Object.getOwnPropertyNames(error))
+            : String(error)
+
+      console.error('Error fetching activities:', {
         message: errorMessage,
         error: error,
-        taskId: task?.id
+        taskId: task?.id,
       })
-      
+
       // Set empty activities on error to prevent UI issues
       setActivities([])
     }
@@ -291,11 +290,11 @@ export function TaskDetailsModal({
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from("task_subtasks")
-        .select("*")
-        .eq("task_id", task.id)
-        .order("position", { ascending: true })
-      
+        .from('task_subtasks')
+        .select('*')
+        .eq('task_id', task.id)
+        .order('position', { ascending: true })
+
       if (error) {
         // Better error extraction
         const errorDetails = {
@@ -306,17 +305,17 @@ export function TaskDetailsModal({
           status: (error as any)?.status,
           statusText: (error as any)?.statusText,
         }
-        
-        console.error("Error fetching subtasks:", {
+
+        console.error('Error fetching subtasks:', {
           ...errorDetails,
           error: error,
           errorString: JSON.stringify(error, null, 2),
-          taskId: task.id
+          taskId: task.id,
         })
         setSubtasks([])
         return
       }
-      
+
       setSubtasks(data || [])
     } catch (error) {
       // Catch block for unexpected errors
@@ -325,11 +324,11 @@ export function TaskDetailsModal({
         errorType: error?.constructor?.name,
         errorString: JSON.stringify(error, Object.getOwnPropertyNames(error || {}), 2),
       }
-      
-      console.error("Error fetching subtasks (catch):", {
+
+      console.error('Error fetching subtasks (catch):', {
         ...errorDetails,
         error: error,
-        taskId: task?.id
+        taskId: task?.id,
       })
       setSubtasks([])
     }
@@ -341,11 +340,11 @@ export function TaskDetailsModal({
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from("task_attachments")
-        .select("*")
-        .eq("task_id", task.id)
-        .order("created_at", { ascending: false })
-      
+        .from('task_attachments')
+        .select('*')
+        .eq('task_id', task.id)
+        .order('created_at', { ascending: false })
+
       if (error) {
         // Better error extraction
         const errorDetails = {
@@ -356,17 +355,17 @@ export function TaskDetailsModal({
           status: (error as any)?.status,
           statusText: (error as any)?.statusText,
         }
-        
-        console.error("Error fetching attachments:", {
+
+        console.error('Error fetching attachments:', {
           ...errorDetails,
           error: error,
           errorString: JSON.stringify(error, null, 2),
-          taskId: task.id
+          taskId: task.id,
         })
         setAttachments([])
         return
       }
-      
+
       setAttachments(data || [])
     } catch (error) {
       // Catch block for unexpected errors
@@ -375,11 +374,11 @@ export function TaskDetailsModal({
         errorType: error?.constructor?.name,
         errorString: JSON.stringify(error, Object.getOwnPropertyNames(error || {}), 2),
       }
-      
-      console.error("Error fetching attachments (catch):", {
+
+      console.error('Error fetching attachments (catch):', {
         ...errorDetails,
         error: error,
-        taskId: task?.id
+        taskId: task?.id,
       })
       setAttachments([])
     }
@@ -391,11 +390,11 @@ export function TaskDetailsModal({
     try {
       const supabase = createClient()
       const { data, error } = await supabase
-        .from("task_deliverables")
-        .select("*")
-        .eq("task_id", task.id)
-        .order("position", { ascending: true })
-      
+        .from('task_deliverables')
+        .select('*')
+        .eq('task_id', task.id)
+        .order('position', { ascending: true })
+
       if (error) {
         // Better error extraction
         const errorDetails = {
@@ -406,17 +405,17 @@ export function TaskDetailsModal({
           status: (error as any)?.status,
           statusText: (error as any)?.statusText,
         }
-        
-        console.error("Error fetching deliverables:", {
+
+        console.error('Error fetching deliverables:', {
           ...errorDetails,
           error: error,
           errorString: JSON.stringify(error, null, 2),
-          taskId: task.id
+          taskId: task.id,
         })
         setDeliverables([])
         return
       }
-      
+
       setDeliverables(data || [])
     } catch (error) {
       // Catch block for unexpected errors
@@ -425,11 +424,11 @@ export function TaskDetailsModal({
         errorType: error?.constructor?.name,
         errorString: JSON.stringify(error, Object.getOwnPropertyNames(error || {}), 2),
       }
-      
-      console.error("Error fetching deliverables (catch):", {
+
+      console.error('Error fetching deliverables (catch):', {
         ...errorDetails,
         error: error,
-        taskId: task?.id
+        taskId: task?.id,
       })
       setDeliverables([])
     }
@@ -438,7 +437,7 @@ export function TaskDetailsModal({
   // Navigation functions
   const getCurrentTaskIndex = () => {
     if (!task || allTasks.length === 0) return -1
-    return allTasks.findIndex(t => t.id === task.id)
+    return allTasks.findIndex((t) => t.id === task.id)
   }
 
   const handlePreviousTask = () => {
@@ -471,10 +470,10 @@ export function TaskDetailsModal({
     const taskUrl = `${window.location.origin}/tasks?task=${task.id}`
     try {
       await navigator.clipboard.writeText(taskUrl)
-      toast.success("Task link copied to clipboard")
+      toast.success('Task link copied to clipboard')
     } catch (error) {
-      console.error("Error copying to clipboard:", error)
-      toast.error("Failed to copy link")
+      console.error('Error copying to clipboard:', error)
+      toast.error('Failed to copy link')
     }
   }
 
@@ -487,10 +486,18 @@ export function TaskDetailsModal({
       fetchAttachments()
       fetchDeliverables()
       setIsStarred((task as any)?.is_starred || false)
-      setEditedTitle(task.title || "")
-      setEditedDescription(task.description || "")
+      setEditedTitle(task.title || '')
+      setEditedDescription(task.description || '')
     }
-  }, [open, task, fetchComments, fetchActivities, fetchSubtasks, fetchAttachments, fetchDeliverables])
+  }, [
+    open,
+    task,
+    fetchComments,
+    fetchActivities,
+    fetchSubtasks,
+    fetchAttachments,
+    fetchDeliverables,
+  ])
 
   const handleSubmitComment = async () => {
     if (!task || !commentText.trim()) return
@@ -498,35 +505,35 @@ export function TaskDetailsModal({
     setIsSubmittingComment(true)
     try {
       const supabase = createClient()
-      
+
       // Get current user's profile
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Not authenticated")
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
         .single()
-      
-      if (!profile) throw new Error("Profile not found")
-      
-      const { error } = await supabase
-        .from("task_comments")
-        .insert({
-          task_id: task.id,
-          author_id: (profile as any).id,
-          body: commentText.trim(),
-        } as any)
+
+      if (!profile) throw new Error('Profile not found')
+
+      const { error } = await supabase.from('task_comments').insert({
+        task_id: task.id,
+        author_id: (profile as any).id,
+        body: commentText.trim(),
+      } as any)
 
       if (error) throw error
 
-      setCommentText("")
+      setCommentText('')
       await fetchComments()
-      toast.success("Comment added")
+      toast.success('Comment added')
     } catch (error) {
-      console.error("Error adding comment:", error)
-      toast.error("Failed to add comment")
+      console.error('Error adding comment:', error)
+      toast.error('Failed to add comment')
     } finally {
       setIsSubmittingComment(false)
     }
@@ -534,44 +541,46 @@ export function TaskDetailsModal({
 
   const handleToggleStar = async () => {
     if (!task) return
-    
+
     const newStarredState = !isStarred
     setIsStarred(newStarredState)
-    
+
     try {
       const supabase = createClient()
-      
+
       // Get current user's profile for updated_by
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Not authenticated")
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
         .single()
-      
-      if (!profile) throw new Error("Profile not found")
-      
+
+      if (!profile) throw new Error('Profile not found')
+
       const { error } = await supabase
-        .from("tasks")
-        .update({ 
+        .from('tasks')
+        .update({
           is_starred: newStarredState,
-          updated_by: profile.id 
+          updated_by: profile.id,
         })
-        .eq("id", task.id)
-      
+        .eq('id', task.id)
+
       if (error) throw error
-      
-      toast.success(newStarredState ? "Task starred" : "Task unstarred")
+
+      toast.success(newStarredState ? 'Task starred' : 'Task unstarred')
       // Update task in parent if callback exists
       if (onEdit) {
         onEdit({ ...task, is_starred: newStarredState } as TaskFull)
       }
     } catch (error) {
-      console.error("Error toggling star:", error)
+      console.error('Error toggling star:', error)
       setIsStarred(!newStarredState) // Revert on error
-      toast.error("Failed to update star status")
+      toast.error('Failed to update star status')
     }
   }
 
@@ -580,42 +589,44 @@ export function TaskDetailsModal({
       setIsEditingTitle(false)
       return
     }
-    
+
     setIsSavingTitle(true)
     try {
       const supabase = createClient()
-      
+
       // Get current user's profile for updated_by
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Not authenticated")
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
         .single()
-      
-      if (!profile) throw new Error("Profile not found")
-      
+
+      if (!profile) throw new Error('Profile not found')
+
       const { error } = await supabase
-        .from("tasks")
-        .update({ 
+        .from('tasks')
+        .update({
           title: editedTitle.trim(),
-          updated_by: profile.id 
+          updated_by: profile.id,
         })
-        .eq("id", task.id)
-      
+        .eq('id', task.id)
+
       if (error) throw error
-      
-      toast.success("Title updated")
+
+      toast.success('Title updated')
       setIsEditingTitle(false)
       if (onEdit) {
         onEdit({ ...task, title: editedTitle.trim() } as TaskFull)
       }
     } catch (error) {
-      console.error("Error updating title:", error)
-      toast.error("Failed to update title")
-      setEditedTitle(task.title || "")
+      console.error('Error updating title:', error)
+      toast.error('Failed to update title')
+      setEditedTitle(task.title || '')
     } finally {
       setIsSavingTitle(false)
     }
@@ -626,84 +637,84 @@ export function TaskDetailsModal({
       setIsEditingDescription(false)
       return
     }
-    
+
     try {
       const supabase = createClient()
-      
+
       // Get current user's profile for updated_by
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Not authenticated")
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
         .single()
-      
-      if (!profile) throw new Error("Profile not found")
-      
+
+      if (!profile) throw new Error('Profile not found')
+
       const { error } = await supabase
-        .from("tasks")
-        .update({ 
+        .from('tasks')
+        .update({
           description: editedDescription,
-          updated_by: profile.id 
+          updated_by: profile.id,
         })
-        .eq("id", task.id)
-      
+        .eq('id', task.id)
+
       if (error) throw error
-      
-      toast.success("Description updated")
+
+      toast.success('Description updated')
       setIsEditingDescription(false)
       if (onEdit) {
         onEdit({ ...task, description: editedDescription } as TaskFull)
       }
     } catch (error) {
-      console.error("Error updating description:", error)
-      toast.error("Failed to update description")
-      setEditedDescription(task.description || "")
+      console.error('Error updating description:', error)
+      toast.error('Failed to update description')
+      setEditedDescription(task.description || '')
     }
   }
 
   // Subtask handlers
   const handleAddSubtask = async () => {
     if (!task || !newSubtaskTitle.trim()) return
-    
+
     try {
       const supabase = createClient()
-      
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Not authenticated")
-      
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
         .single()
-      
-      if (!profile) throw new Error("Profile not found")
-      
-      const maxPosition = subtasks.length > 0 
-        ? Math.max(...subtasks.map(s => s.position)) 
-        : -1
-      
-      const { error } = await supabase
-        .from("task_subtasks")
-        .insert({
-          task_id: task.id,
-          title: newSubtaskTitle.trim(),
-          is_completed: false,
-          position: maxPosition + 1,
-          created_by: profile.id
-        })
-      
+
+      if (!profile) throw new Error('Profile not found')
+
+      const maxPosition = subtasks.length > 0 ? Math.max(...subtasks.map((s) => s.position)) : -1
+
+      const { error } = await supabase.from('task_subtasks').insert({
+        task_id: task.id,
+        title: newSubtaskTitle.trim(),
+        is_completed: false,
+        position: maxPosition + 1,
+        created_by: profile.id,
+      })
+
       if (error) throw error
-      
-      setNewSubtaskTitle("")
+
+      setNewSubtaskTitle('')
       await fetchSubtasks()
-      toast.success("Subtask added")
+      toast.success('Subtask added')
     } catch (error) {
-      console.error("Error adding subtask:", error)
-      toast.error("Failed to add subtask")
+      console.error('Error adding subtask:', error)
+      toast.error('Failed to add subtask')
     }
   }
 
@@ -711,75 +722,71 @@ export function TaskDetailsModal({
     try {
       const supabase = createClient()
       const { error } = await supabase
-        .from("task_subtasks")
+        .from('task_subtasks')
         .update({ is_completed: !currentState })
-        .eq("id", subtaskId)
-      
+        .eq('id', subtaskId)
+
       if (error) throw error
       await fetchSubtasks()
     } catch (error) {
-      console.error("Error toggling subtask:", error)
-      toast.error("Failed to update subtask")
+      console.error('Error toggling subtask:', error)
+      toast.error('Failed to update subtask')
     }
   }
 
   const handleDeleteSubtask = async (subtaskId: string) => {
     try {
       const supabase = createClient()
-      const { error } = await supabase
-        .from("task_subtasks")
-        .delete()
-        .eq("id", subtaskId)
-      
+      const { error } = await supabase.from('task_subtasks').delete().eq('id', subtaskId)
+
       if (error) throw error
       await fetchSubtasks()
-      toast.success("Subtask deleted")
+      toast.success('Subtask deleted')
     } catch (error) {
-      console.error("Error deleting subtask:", error)
-      toast.error("Failed to delete subtask")
+      console.error('Error deleting subtask:', error)
+      toast.error('Failed to delete subtask')
     }
   }
 
   // Deliverable handlers (similar to subtasks)
   const handleAddDeliverable = async () => {
     if (!task || !newDeliverableTitle.trim()) return
-    
+
     try {
       const supabase = createClient()
-      
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Not authenticated")
-      
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
         .single()
-      
-      if (!profile) throw new Error("Profile not found")
-      
-      const maxPosition = deliverables.length > 0 
-        ? Math.max(...deliverables.map(d => d.position)) 
-        : -1
-      
-      const { error } = await supabase
-        .from("task_deliverables")
-        .insert({
-          task_id: task.id,
-          title: newDeliverableTitle.trim(),
-          is_completed: false,
-          position: maxPosition + 1,
-          created_by: profile.id
-        })
-      
+
+      if (!profile) throw new Error('Profile not found')
+
+      const maxPosition =
+        deliverables.length > 0 ? Math.max(...deliverables.map((d) => d.position)) : -1
+
+      const { error } = await supabase.from('task_deliverables').insert({
+        task_id: task.id,
+        title: newDeliverableTitle.trim(),
+        is_completed: false,
+        position: maxPosition + 1,
+        created_by: profile.id,
+      })
+
       if (error) throw error
-      
-      setNewDeliverableTitle("")
+
+      setNewDeliverableTitle('')
       await fetchDeliverables()
-      toast.success("Deliverable added")
+      toast.success('Deliverable added')
     } catch (error) {
-      console.error("Error adding deliverable:", error)
-      toast.error("Failed to add deliverable")
+      console.error('Error adding deliverable:', error)
+      toast.error('Failed to add deliverable')
     }
   }
 
@@ -787,97 +794,99 @@ export function TaskDetailsModal({
     try {
       const supabase = createClient()
       const { error } = await supabase
-        .from("task_deliverables")
+        .from('task_deliverables')
         .update({ is_completed: !currentState })
-        .eq("id", deliverableId)
-      
+        .eq('id', deliverableId)
+
       if (error) throw error
       await fetchDeliverables()
     } catch (error) {
-      console.error("Error toggling deliverable:", error)
-      toast.error("Failed to update deliverable")
+      console.error('Error toggling deliverable:', error)
+      toast.error('Failed to update deliverable')
     }
   }
 
   const handleDeleteDeliverable = async (deliverableId: string) => {
     try {
       const supabase = createClient()
-      const { error } = await supabase
-        .from("task_deliverables")
-        .delete()
-        .eq("id", deliverableId)
-      
+      const { error } = await supabase.from('task_deliverables').delete().eq('id', deliverableId)
+
       if (error) throw error
       await fetchDeliverables()
-      toast.success("Deliverable deleted")
+      toast.success('Deliverable deleted')
     } catch (error) {
-      console.error("Error deleting deliverable:", error)
-      toast.error("Failed to delete deliverable")
+      console.error('Error deleting deliverable:', error)
+      toast.error('Failed to delete deliverable')
     }
   }
 
   // Attachment handlers
   const handleUploadFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!task || !event.target.files || event.target.files.length === 0) return
-    
+
     const file = event.target.files[0]
     setUploadingFile(true)
-    
+
     try {
       const supabase = createClient()
-      
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("Not authenticated")
-      
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
         .single()
-      
-      if (!profile) throw new Error("Profile not found")
-      
+
+      if (!profile) throw new Error('Profile not found')
+
       // Upload to Supabase Storage
       // Path format: {task_id}/{timestamp}.{ext}
       const fileExt = file.name.split('.').pop()
       const fileName = `${Date.now()}.${fileExt}`
       const filePath = `${task.id}/${fileName}`
-      
+
       const { error: uploadError } = await supabase.storage
         .from('task-attachments')
         .upload(filePath, file)
-      
+
       if (uploadError) {
-        if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('not found')) {
-          throw new Error('Storage bucket "task-attachments" not found. Please create it in Supabase Storage settings.')
+        if (
+          uploadError.message?.includes('Bucket not found') ||
+          uploadError.message?.includes('not found')
+        ) {
+          throw new Error(
+            'Storage bucket "task-attachments" not found. Please create it in Supabase Storage settings.'
+          )
         }
         throw uploadError
       }
-      
+
       // Save attachment record
       // Store the full path including bucket for reference
       const fullPath = `task-attachments/${filePath}`
-      
-      const { error: insertError } = await supabase
-        .from("task_attachments")
-        .insert({
-          task_id: task.id,
-          file_name: file.name,
-          file_path: fullPath,
-          file_size: file.size,
-          mime_type: file.type,
-          uploaded_by: profile.id
-        })
-      
+
+      const { error: insertError } = await supabase.from('task_attachments').insert({
+        task_id: task.id,
+        file_name: file.name,
+        file_path: fullPath,
+        file_size: file.size,
+        mime_type: file.type,
+        uploaded_by: profile.id,
+      })
+
       if (insertError) throw insertError
-      
+
       await fetchAttachments()
-      toast.success("File uploaded successfully")
+      toast.success('File uploaded successfully')
     } catch (error) {
-      console.error("Error uploading file:", error)
+      console.error('Error uploading file:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload file'
       if (errorMessage.includes('Bucket not found')) {
-        toast.error("Storage bucket not configured. Please contact your administrator.")
+        toast.error('Storage bucket not configured. Please contact your administrator.')
       } else {
         toast.error(errorMessage)
       }
@@ -894,18 +903,18 @@ export function TaskDetailsModal({
       // Extract the path without the bucket prefix
       // file_path format: task-attachments/{task_id}/{filename}
       const pathWithoutBucket = attachment.file_path.replace(/^task-attachments\//, '')
-      
+
       const { data, error } = await supabase.storage
         .from('task-attachments')
         .download(pathWithoutBucket)
-      
+
       if (error) {
         if (error.message?.includes('Bucket not found') || error.message?.includes('not found')) {
           throw new Error('Storage bucket "task-attachments" not found.')
         }
         throw error
       }
-      
+
       // Create download link
       const url = URL.createObjectURL(data)
       const a = document.createElement('a')
@@ -915,13 +924,13 @@ export function TaskDetailsModal({
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      
-      toast.success("File downloaded")
+
+      toast.success('File downloaded')
     } catch (error) {
-      console.error("Error downloading file:", error)
+      console.error('Error downloading file:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to download file'
       if (errorMessage.includes('Bucket not found')) {
-        toast.error("Storage bucket not configured. Please contact your administrator.")
+        toast.error('Storage bucket not configured. Please contact your administrator.')
       } else {
         toast.error(errorMessage)
       }
@@ -931,31 +940,28 @@ export function TaskDetailsModal({
   const handleDeleteAttachment = async (attachmentId: string, filePath: string) => {
     try {
       const supabase = createClient()
-      
+
       // Extract the path without the bucket prefix
       // file_path format: task-attachments/{task_id}/{filename}
       const pathWithoutBucket = filePath.replace(/^task-attachments\//, '')
-      
+
       // Delete from storage
       const { error: storageError } = await supabase.storage
         .from('task-attachments')
         .remove([pathWithoutBucket])
-      
-      if (storageError) console.warn("Error deleting from storage:", storageError)
-      
+
+      if (storageError) console.warn('Error deleting from storage:', storageError)
+
       // Delete record
-      const { error } = await supabase
-        .from("task_attachments")
-        .delete()
-        .eq("id", attachmentId)
-      
+      const { error } = await supabase.from('task_attachments').delete().eq('id', attachmentId)
+
       if (error) throw error
-      
+
       await fetchAttachments()
-      toast.success("Attachment deleted")
+      toast.success('Attachment deleted')
     } catch (error) {
-      console.error("Error deleting attachment:", error)
-      toast.error("Failed to delete attachment")
+      console.error('Error deleting attachment:', error)
+      toast.error('Failed to delete attachment')
     }
   }
 
@@ -963,19 +969,19 @@ export function TaskDetailsModal({
 
   const statusConfig: Record<
     string,
-    { label: string; variant: "default" | "secondary" | "outline" | "destructive" }
+    { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
   > = {
-    pending: { label: "To Do", variant: "outline" },
-    in_progress: { label: "In Progress", variant: "default" },
-    completed: { label: "Completed", variant: "secondary" },
-    cancelled: { label: "Cancelled", variant: "destructive" },
+    pending: { label: 'To Do', variant: 'outline' },
+    in_progress: { label: 'In Progress', variant: 'default' },
+    completed: { label: 'Completed', variant: 'secondary' },
+    cancelled: { label: 'Cancelled', variant: 'destructive' },
   }
 
   const priorityConfig: Record<string, { label: string; color: string }> = {
-    low: { label: "Low", color: "text-gray-500" },
-    medium: { label: "Medium", color: "text-yellow-500" },
-    high: { label: "High", color: "text-orange-500" },
-    urgent: { label: "Urgent", color: "text-red-500" },
+    low: { label: 'Low', color: 'text-gray-500' },
+    medium: { label: 'Medium', color: 'text-yellow-500' },
+    high: { label: 'High', color: 'text-orange-500' },
+    urgent: { label: 'Urgent', color: 'text-red-500' },
   }
 
   const status = task.status ? statusConfig[task.status] : null
@@ -989,19 +995,22 @@ export function TaskDetailsModal({
     if (profile?.first_name && profile?.last_name) {
       return `${profile.first_name} ${profile.last_name}`
     }
-    return profile?.email || "Unknown"
+    return profile?.email || 'Unknown'
   }
 
   const getInitials = (profile: any) => {
     if (profile?.first_name && profile?.last_name) {
       return `${profile.first_name[0]}${profile.last_name[0]}`
     }
-    return profile?.email?.[0]?.toUpperCase() || "?"
+    return profile?.email?.[0]?.toUpperCase() || '?'
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full h-[95vh] max-h-[95vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent 
+        className="!max-w-[95vw] sm:!max-w-[95vw] lg:!max-w-[95vw] w-full h-[95vh] max-h-[95vh] p-0 gap-0 overflow-hidden flex flex-col"
+        style={{ maxWidth: '95vw' }}
+      >
         <DialogTitle className="sr-only">Task Details</DialogTitle>
         <DialogDescription className="sr-only">Task details and information</DialogDescription>
 
@@ -1009,7 +1018,7 @@ export function TaskDetailsModal({
         <div className="flex items-center justify-between px-6 py-3 border-b">
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">
-              Created {format(new Date(task.created_at), "MMM d")}
+              Created {format(new Date(task.created_at), 'MMM d')}
             </span>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" className="h-8">
@@ -1022,13 +1031,8 @@ export function TaskDetailsModal({
               <Button variant="ghost" size="sm" className="h-8">
                 <MoreVertical className="h-4 w-4" />
               </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="h-8"
-                onClick={handleToggleStar}
-              >
-                <Star className={cn("h-4 w-4", isStarred && "fill-yellow-400 text-yellow-400")} />
+              <Button variant="ghost" size="sm" className="h-8" onClick={handleToggleStar}>
+                <Star className={cn('h-4 w-4', isStarred && 'fill-yellow-400 text-yellow-400')} />
               </Button>
             </div>
           </div>
@@ -1080,10 +1084,10 @@ export function TaskDetailsModal({
                     onChange={(e) => setEditedTitle(e.target.value)}
                     onBlur={handleSaveTitle}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      if (e.key === 'Enter') {
                         handleSaveTitle()
-                      } else if (e.key === "Escape") {
-                        setEditedTitle(task.title || "")
+                      } else if (e.key === 'Escape') {
+                        setEditedTitle(task.title || '')
                         setIsEditingTitle(false)
                       }
                     }}
@@ -1093,7 +1097,7 @@ export function TaskDetailsModal({
                   />
                 </div>
               ) : (
-                <h1 
+                <h1
                   className="text-2xl font-bold cursor-pointer hover:bg-muted/50 px-2 py-1 rounded transition-colors"
                   onClick={() => setIsEditingTitle(true)}
                 >
@@ -1126,7 +1130,7 @@ export function TaskDetailsModal({
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
-                        <span>{format(new Date(task.due_date), "MMM d, yyyy")}</span>
+                        <span>{format(new Date(task.due_date), 'MMM d, yyyy')}</span>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>Due Date</TooltipContent>
@@ -1140,10 +1144,9 @@ export function TaskDetailsModal({
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="h-4 w-4" />
                         <span>
-                          {(task as any)?.estimated_duration < 60 
+                          {(task as any)?.estimated_duration < 60
                             ? `${(task as any)?.estimated_duration}m`
-                            : `${Math.floor((task as any)?.estimated_duration / 60)}h ${(task as any)?.estimated_duration % 60}m`
-                          }
+                            : `${Math.floor((task as any)?.estimated_duration / 60)}h ${(task as any)?.estimated_duration % 60}m`}
                         </span>
                       </div>
                     </TooltipTrigger>
@@ -1167,7 +1170,10 @@ export function TaskDetailsModal({
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2">
                         <Tag className="h-4 w-4 text-muted-foreground" />
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-100 text-blue-800 hover:bg-blue-200"
+                        >
                           {task.department.name}
                         </Badge>
                       </div>
@@ -1191,10 +1197,7 @@ export function TaskDetailsModal({
                               <Tooltip key={assignee.id}>
                                 <TooltipTrigger asChild>
                                   <Avatar className="h-6 w-6 border-2 border-background cursor-pointer">
-                                    <AvatarImage
-                                      src={getDiceBearAvatar(seed)}
-                                      alt={name}
-                                    />
+                                    <AvatarImage src={getDiceBearAvatar(seed)} alt={name} />
                                     <AvatarFallback className="text-xs">
                                       {getInitials(profile)}
                                     </AvatarFallback>
@@ -1213,7 +1216,7 @@ export function TaskDetailsModal({
                       </div>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {task.assignees.map((a) => getName(a.profile)).join(", ")}
+                      {task.assignees.map((a) => getName(a.profile)).join(', ')}
                     </TooltipContent>
                   </Tooltip>
                 ) : (
@@ -1233,7 +1236,7 @@ export function TaskDetailsModal({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2">
-                        <Flag className={cn("h-4 w-4", priority.color)} />
+                        <Flag className={cn('h-4 w-4', priority.color)} />
                         <span className="text-sm">{priority.label}</span>
                       </div>
                     </TooltipTrigger>
@@ -1251,26 +1254,29 @@ export function TaskDetailsModal({
                   </Tooltip>
                 )}
 
-
                 {/* Important Links */}
-                {(task as any)?.important_links && Array.isArray((task as any)?.important_links) && (task as any)?.important_links.length > 0 ? (
+                {(task as any)?.important_links &&
+                Array.isArray((task as any)?.important_links) &&
+                (task as any)?.important_links.length > 0 ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2">
                         <Link2 className="h-4 w-4 text-muted-foreground" />
                         <div className="flex flex-wrap gap-1">
-                          {(task as any)?.important_links.slice(0, 3).map((link: any, idx: number) => (
-                            <a
-                              key={idx}
-                              href={link.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {link.label || link.url}
-                            </a>
-                          ))}
+                          {(task as any)?.important_links
+                            .slice(0, 3)
+                            .map((link: any, idx: number) => (
+                              <a
+                                key={idx}
+                                href={link.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {link.label || link.url}
+                              </a>
+                            ))}
                           {(task as any)?.important_links.length > 3 && (
                             <span className="text-xs text-muted-foreground">
                               +{(task as any)?.important_links.length - 3}
@@ -1320,8 +1326,8 @@ export function TaskDetailsModal({
                     className="min-h-[100px] resize-none"
                     placeholder="Add a description..."
                     onKeyDown={(e) => {
-                      if (e.key === "Escape") {
-                        setEditedDescription(task.description || "")
+                      if (e.key === 'Escape') {
+                        setEditedDescription(task.description || '')
                         setIsEditingDescription(false)
                       }
                     }}
@@ -1335,7 +1341,7 @@ export function TaskDetailsModal({
                       size="sm"
                       variant="ghost"
                       onClick={() => {
-                        setEditedDescription(task.description || "")
+                        setEditedDescription(task.description || '')
                         setIsEditingDescription(false)
                       }}
                     >
@@ -1344,7 +1350,7 @@ export function TaskDetailsModal({
                   </div>
                 </div>
               ) : (
-                <div 
+                <div
                   className="min-h-[100px] rounded-md border p-3 cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => setIsEditingDescription(true)}
                 >
@@ -1389,8 +1395,8 @@ export function TaskDetailsModal({
                         </button>
                         <span
                           className={cn(
-                            "flex-1 text-sm",
-                            subtask.is_completed && "line-through text-muted-foreground"
+                            'flex-1 text-sm',
+                            subtask.is_completed && 'line-through text-muted-foreground'
                           )}
                         >
                           {subtask.title}
@@ -1413,7 +1419,7 @@ export function TaskDetailsModal({
                       value={newSubtaskTitle}
                       onChange={(e) => setNewSubtaskTitle(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                        if (e.key === 'Enter') {
                           handleAddSubtask()
                         }
                       }}
@@ -1443,7 +1449,7 @@ export function TaskDetailsModal({
                     >
                       <Upload className="h-8 w-8 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">
-                        {uploadingFile ? "Uploading..." : "Click to upload or drag and drop"}
+                        {uploadingFile ? 'Uploading...' : 'Click to upload or drag and drop'}
                       </span>
                     </label>
                   </div>
@@ -1474,7 +1480,9 @@ export function TaskDetailsModal({
                             variant="ghost"
                             size="sm"
                             className="h-8 w-8 p-0"
-                            onClick={() => handleDeleteAttachment(attachment.id, attachment.file_path)}
+                            onClick={() =>
+                              handleDeleteAttachment(attachment.id, attachment.file_path)
+                            }
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1499,7 +1507,9 @@ export function TaskDetailsModal({
                         className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 transition-colors"
                       >
                         <button
-                          onClick={() => handleToggleDeliverable(deliverable.id, deliverable.is_completed)}
+                          onClick={() =>
+                            handleToggleDeliverable(deliverable.id, deliverable.is_completed)
+                          }
                           className="flex-shrink-0"
                         >
                           {deliverable.is_completed ? (
@@ -1510,8 +1520,8 @@ export function TaskDetailsModal({
                         </button>
                         <span
                           className={cn(
-                            "flex-1 text-sm",
-                            deliverable.is_completed && "line-through text-muted-foreground"
+                            'flex-1 text-sm',
+                            deliverable.is_completed && 'line-through text-muted-foreground'
                           )}
                         >
                           {deliverable.title}
@@ -1534,14 +1544,18 @@ export function TaskDetailsModal({
                       value={newDeliverableTitle}
                       onChange={(e) => setNewDeliverableTitle(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                        if (e.key === 'Enter') {
                           handleAddDeliverable()
                         }
                       }}
                       placeholder="Add a deliverable..."
                       className="flex-1 px-2 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
                     />
-                    <Button size="sm" onClick={handleAddDeliverable} disabled={!newDeliverableTitle.trim()}>
+                    <Button
+                      size="sm"
+                      onClick={handleAddDeliverable}
+                      disabled={!newDeliverableTitle.trim()}
+                    >
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
@@ -1585,12 +1599,10 @@ export function TaskDetailsModal({
                           {getName(task.created_by_profile)}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {format(new Date(task.created_at), "MMM d, h:mm a")}
+                          {format(new Date(task.created_at), 'MMM d, h:mm a')}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        created this task
-                      </p>
+                      <p className="text-sm text-muted-foreground">created this task</p>
                     </div>
                   </div>
                 </div>
@@ -1600,33 +1612,28 @@ export function TaskDetailsModal({
               {activities.map((activity) => {
                 const actorName = activity.created_by_profile
                   ? getName(activity.created_by_profile)
-                  : "System"
+                  : 'System'
                 const actorInitials = activity.created_by_profile
                   ? getInitials(activity.created_by_profile)
-                  : "S"
-                const actorSeed = activity.created_by_profile?.email || "system"
+                  : 'S'
+                const actorSeed = activity.created_by_profile?.email || 'system'
 
                 return (
                   <div key={activity.id} className="space-y-2">
                     <div className="flex items-start gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage
-                          src={getDiceBearAvatar(actorSeed)}
-                          alt={actorName}
-                        />
-                        <AvatarFallback className="text-xs">
-                          {actorInitials}
-                        </AvatarFallback>
+                        <AvatarImage src={getDiceBearAvatar(actorSeed)} alt={actorName} />
+                        <AvatarFallback className="text-xs">{actorInitials}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{actorName}</span>
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(activity.created_at), "MMM d, h:mm a")}
+                            {format(new Date(activity.created_at), 'MMM d, h:mm a')}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {activity.action.replace(/_/g, " ")}
+                          {activity.action.replace(/_/g, ' ')}
                         </p>
                       </div>
                     </div>
@@ -1644,24 +1651,17 @@ export function TaskDetailsModal({
                   <div key={comment.id} className="space-y-2">
                     <div className="flex items-start gap-3">
                       <Avatar className="h-8 w-8">
-                        <AvatarImage
-                          src={getDiceBearAvatar(authorSeed)}
-                          alt={authorName}
-                        />
-                        <AvatarFallback className="text-xs">
-                          {authorInitials}
-                        </AvatarFallback>
+                        <AvatarImage src={getDiceBearAvatar(authorSeed)} alt={authorName} />
+                        <AvatarFallback className="text-xs">{authorInitials}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{authorName}</span>
                           <span className="text-xs text-muted-foreground">
-                            {format(new Date(comment.created_at), "MMM d, h:mm a")}
+                            {format(new Date(comment.created_at), 'MMM d, h:mm a')}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {comment.body}
-                        </p>
+                        <p className="text-sm text-muted-foreground">{comment.body}</p>
                       </div>
                     </div>
                   </div>
@@ -1670,9 +1670,7 @@ export function TaskDetailsModal({
 
               {comments.length === 0 && activities.length === 0 && !task.created_by_profile && (
                 <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">
-                    No activity yet
-                  </p>
+                  <p className="text-sm text-muted-foreground">No activity yet</p>
                 </div>
               )}
             </div>
@@ -1685,7 +1683,7 @@ export function TaskDetailsModal({
                 onChange={(e) => setCommentText(e.target.value)}
                 className="min-h-[80px] resize-none"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                     handleSubmitComment()
                   }
                 }}
@@ -1721,4 +1719,3 @@ export function TaskDetailsModal({
     </Dialog>
   )
 }
-

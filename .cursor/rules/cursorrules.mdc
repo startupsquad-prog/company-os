@@ -42,6 +42,10 @@ All foreign keys use `uuid`.  Soft deletes = `deleted_at` timestamp.
 - `departments`, `teams`, `employees`  
 - `activity_events` (global audit log)  
 - `enum_registry` (dynamic enums - category, key, label, order_no)
+- `announcements` ↔ `announcement_views`
+- `modules` ↔ `module_fields` ↔ `module_records` ↔ `module_record_assignments`
+- `verticals` (id, name, code, is_active)
+- `user_verticals` (user_id TEXT, vertical_id → core.verticals.id, role_id → core.roles.id, UNIQUE(user_id, vertical_id))
 
 **Relations**
 - `profiles.department_id` → `departments.id`
@@ -50,6 +54,12 @@ All foreign keys use `uuid`.  Soft deletes = `deleted_at` timestamp.
 - `user_role_bindings.user_id` → `auth.users.id`
 - `user_role_bindings.role_id` → `roles.id`
 - `role_permissions.permission_id` → `permissions.id`
+- 1 Announcement → many AnnouncementViews
+- 1 Module → many ModuleFields, many ModuleRecords
+- 1 ModuleRecord → many ModuleRecordAssignments (to profiles or teams)
+- `user_verticals.user_id` → Clerk user id (TEXT; app-level)
+- `user_verticals.vertical_id` → `core.verticals.id`
+- `user_verticals.role_id` → `core.roles.id` (optional)
 
 ---
 
@@ -58,12 +68,26 @@ All foreign keys use `uuid`.  Soft deletes = `deleted_at` timestamp.
 - `opportunities` (lead_id, pipeline_id, stage_id)  
 - `interactions` (entity_type, entity_id)  
 - `pipelines`, `stages`, `status_history`
+- `products` (supplier_id → contacts, manufacturer_id → companies)
+- `product_variants` (product_id)
+- `collections` + `product_collections` (many-to-many)
+- `quotations` (lead_id, quote_number, items JSONB, status history)
+- `calls` (lead_id, contact_id, caller_id → profiles, call_type, duration)
+- `call_notes` (call_id)
+- `marketing_assets` (file_url, asset_type, is_public)
 
 **Relations**
 - 1 Lead → many Interactions  
 - 1 Lead → many Status History  
+- 1 Lead → many Quotations
+- 1 Lead → many Calls
 - 1 Pipeline → many Stages  
-- 1 Stage → many Opportunities  
+- 1 Stage → many Opportunities
+- 1 Product → many Variants
+- Products ↔ Collections (many-to-many via product_collections)
+- 1 Quotation → many QuotationStatusHistory
+- 1 Call → many Call Notes  
+- Add: `leads.vertical_id` (nullable for global); UI scopes lists by selected vertical.
 
 ---
 
@@ -143,11 +167,26 @@ All foreign keys use `uuid`.  Soft deletes = `deleted_at` timestamp.
 ### `common_util`
 - `tasks` ↔ `task_assignees`  
 - `sops`, `files`, `password_vault`, `subscriptions`  
+- `message_threads` ↔ `message_thread_participants` ↔ `messages`
+- `events` ↔ `event_participants`
+- `knowledge_categories` ↔ `knowledge_articles`
+- `marketing_assets`
+- `tickets` ↔ `ticket_comments` ↔ `ticket_assignments` ↔ `ticket_status_history`
+- `documents` ↔ `document_assignments`
+- `subscriptions` ↔ `subscription_users` ↔ `subscription_renewals`
 
 **Relations**
 - 1 Task → many Assignees  
 - 1 SOP → many Files  
-- 1 Subscription → owner_team (FK → core.teams)
+- 1 Subscription → owner (FK → core.profiles), team (FK → core.teams), vendor (FK → core.contacts)
+- 1 Subscription → many SubscriptionUsers, many SubscriptionRenewals
+- 1 MessageThread → many Participants, many Messages
+- 1 Event → many Participants
+- 1 KnowledgeCategory → many Articles (parent_id for hierarchy)
+- 1 Ticket → many Comments, many Assignments, many StatusHistory
+- 1 Document → many Assignments
+- Add: `knowledge_articles.vertical_id` → `core.verticals.id` (nullable)
+- Add: `tasks.vertical_id` → `core.verticals.id` (nullable)
 
 ---
 
@@ -155,7 +194,20 @@ All foreign keys use `uuid`.  Soft deletes = `deleted_at` timestamp.
 Dedicated vertical for Import business:  
 - `inquiries`, `suppliers`, `rfqs`, `quotes`, `shipments`, `landed_costs`  
 - 1 Inquiry → many RFQs  
-- 1 RFQ → many Quotes → may become Orders  
+- 1 RFQ → many Quotes → may become Orders
+
+---
+
+### `hr`
+Human resources management:
+- `attendance_sessions` (employee_id → profiles, date, check_in/out, status)
+- `attendance_records` (session_id, record_type, timestamp)
+- `leave_requests` (employee_id → profiles, leave_type, dates, status, approved_by)
+
+**Relations**
+- 1 Profile → many AttendanceSessions (one per date)
+- 1 AttendanceSession → many AttendanceRecords
+- 1 Profile → many LeaveRequests  
 
 ---
 
@@ -718,3 +770,544 @@ export default function MyPage() {
 ```
 
 **REMINDER:** If you create ANY page or component that violates these layout rules, the work is INCOMPLETE. Always verify layout structure before marking as done.
+
+---
+
+## 11. JSX/TSX STRUCTURE VALIDATION — CRITICAL PREVENTION
+
+**MANDATORY:** These rules MUST be followed for ALL JSX/TSX code to prevent parsing errors and build failures.
+
+### 11.1. JSX Structure Rules — NEVER BREAK
+
+**CRITICAL RULE:** Every opening JSX tag MUST have a matching closing tag. Every opening brace `{` MUST have a matching closing brace `}`. Every opening parenthesis `(` in JSX expressions MUST have a matching closing parenthesis `)`.
+
+**✅ CORRECT Patterns:**
+
+```tsx
+// ✅ Simple element
+<div>Content</div>
+
+// ✅ Self-closing element
+<input type="text" />
+
+// ✅ Ternary operator - properly balanced
+{messages.length === 0 ? (
+  <EmptyState />
+) : (
+  <MessageList />
+)}
+
+// ✅ Fragment - properly closed
+<>
+  <div>Content 1</div>
+  <div>Content 2</div>
+</>
+
+// ✅ Nested conditionals - properly balanced
+{isLoading ? (
+  <Loader />
+) : error ? (
+  <Error message={error} />
+) : (
+  <Content />
+)}
+
+// ✅ Array map - properly closed
+{messages.map((message) => (
+  <div key={message.id}>{message.content}</div>
+))}
+
+// ✅ Complex nested structure
+<div>
+  {condition ? (
+    <>
+      <Header />
+      <Content />
+    </>
+  ) : (
+    <EmptyState />
+  )}
+</div>
+```
+
+**❌ WRONG Patterns:**
+
+```tsx
+// ❌ Missing closing tag
+<div>
+  <span>Content</span>
+// Missing </div>
+
+// ❌ Extra closing tag
+<div>Content</div>
+</div>  // Extra closing tag
+
+// ❌ Unbalanced ternary
+{messages.length === 0 ? (
+  <EmptyState />
+)}  // Missing : ( else branch)
+
+// ❌ Unbalanced braces in ternary
+{messages.length === 0 ? (
+  <EmptyState />
+) : (
+  <MessageList />
+)}  // Extra closing brace
+
+// ❌ Fragment not closed
+<>
+  <div>Content</div>
+// Missing </>
+
+// ❌ Map not properly closed
+{messages.map((message) => (
+  <div key={message.id}>{message.content}</div>
+)}  // Missing closing parenthesis
+
+// ❌ Nested structure with mismatched tags
+<div>
+  {condition ? (
+    <span>Content</span>
+  ) : (
+    <div>Other</div>
+  )}
+</span>  // Wrong closing tag
+```
+
+### 11.2. JSX Expression Balance Rules
+
+**For ALL JSX expressions (`{...}`):**
+
+1. **Opening `{` must have matching `}`:**
+   ```tsx
+   {condition && <Component />}  // ✅ Balanced
+   {condition && <Component />}  // ❌ Missing closing brace
+   ```
+
+2. **Ternary operators must be complete:**
+   ```tsx
+   {condition ? <A /> : <B />}  // ✅ Complete ternary
+   {condition ? <A />}  // ❌ Missing else branch
+   ```
+
+3. **Parentheses in expressions must be balanced:**
+   ```tsx
+   {messages.map((msg) => <div>{msg}</div>)}  // ✅ Balanced
+   {messages.map((msg) => <div>{msg}</div>)}  // ❌ Missing closing paren
+   ```
+
+### 11.3. Fragment Rules
+
+**For ALL React Fragments:**
+
+1. **Fragment must be closed:**
+   ```tsx
+   <>...</>  // ✅ Properly closed
+   <>...</div>  // ❌ Wrong closing tag
+   ```
+
+2. **Fragment in ternary must be balanced:**
+   ```tsx
+   {condition ? (
+     <>
+       <A />
+       <B />
+     </>
+   ) : (
+     <C />
+   )}  // ✅ Properly balanced
+   ```
+
+### 11.4. Array Methods in JSX
+
+**For ALL array methods (map, filter, etc.):**
+
+1. **Map must be properly closed:**
+   ```tsx
+   {items.map((item) => (
+     <div key={item.id}>{item.name}</div>
+   ))}  // ✅ Properly closed
+   
+   {items.map((item) => (
+     <div key={item.id}>{item.name}</div>
+   )}  // ❌ Missing closing paren
+   ```
+
+2. **Nested maps must be balanced:**
+   ```tsx
+   {items.map((item) => (
+     <div key={item.id}>
+       {item.subItems.map((sub) => (
+         <span key={sub.id}>{sub.name}</span>
+       ))}
+     </div>
+   ))}  // ✅ Properly nested and closed
+   ```
+
+### 11.5. Conditional Rendering Rules
+
+**For ALL conditional rendering:**
+
+1. **Logical AND must be balanced:**
+   ```tsx
+   {condition && <Component />}  // ✅ Balanced
+   {condition && <Component />  // ❌ Missing closing brace
+   ```
+
+2. **Ternary must have both branches:**
+   ```tsx
+   {condition ? <A /> : <B />}  // ✅ Complete
+   {condition ? <A />}  // ❌ Missing else
+   ```
+
+3. **Nested conditionals must be balanced:**
+   ```tsx
+   {a ? (
+     <A />
+   ) : b ? (
+     <B />
+   ) : (
+     <C />
+   )}  // ✅ Properly nested
+   ```
+
+### 11.6. Component Structure Validation Checklist
+
+**MANDATORY checks before marking JSX work as complete:**
+
+- [ ] **All Opening Tags Closed:**
+  - Every `<div>`, `<span>`, `<Component>` has matching `</div>`, `</span>`, `</Component>`
+  - Every self-closing tag uses `/>` format
+  - No orphaned opening or closing tags
+
+- [ ] **All Braces Balanced:**
+  - Every `{` has matching `}`
+  - JSX expressions are properly wrapped
+  - No extra or missing braces
+
+- [ ] **All Parentheses Balanced:**
+  - Every `(` in JSX expressions has matching `)`
+  - Ternary operators are complete: `? ... : ...`
+  - Function calls and arrow functions are properly closed
+
+- [ ] **Fragments Properly Closed:**
+  - Every `<>` has matching `</>`
+  - Fragments in conditionals are properly balanced
+
+- [ ] **Array Methods Properly Closed:**
+  - Every `.map(`, `.filter(` has matching closing `)`
+  - Nested array methods are properly balanced
+
+- [ ] **Conditionals Complete:**
+  - Ternary operators have both `?` and `:` branches
+  - Logical AND/OR expressions are properly balanced
+
+### 11.7. Common JSX Structure Errors to Avoid
+
+❌ **Don't:**
+- Close ternary operators prematurely (e.g., `)}` before closing fragment)
+- Mix closing tags (e.g., `</div>` when you opened `<span>`)
+- Forget to close fragments in conditional branches
+- Add extra closing braces/parentheses
+- Nest conditionals without proper balance
+
+✅ **Do:**
+- Always count opening and closing tags/braces/parentheses
+- Use proper indentation to visualize structure
+- Close fragments before closing ternary operators
+- Test JSX structure by temporarily removing content to see if structure is valid
+- Use ESLint and TypeScript to catch structural errors
+
+### 11.8. Quick Reference: JSX Structure Patterns
+
+```tsx
+// ✅ Simple element
+<div>Content</div>
+
+// ✅ Self-closing
+<input type="text" />
+
+// ✅ Fragment
+<>...</>
+
+// ✅ Ternary
+{condition ? <A /> : <B />}
+
+// ✅ Ternary with fragment
+{condition ? (
+  <>
+    <A />
+    <B />
+  </>
+) : (
+  <C />
+)}
+
+// ✅ Map
+{items.map((item) => (
+  <div key={item.id}>{item.name}</div>
+))}
+
+// ✅ Nested conditionals
+{a ? (
+  <A />
+) : b ? (
+  <B />
+) : (
+  <C />
+)}
+
+// ✅ Complex nested structure
+<div>
+  {condition ? (
+    <>
+      {items.map((item) => (
+        <div key={item.id}>
+          {item.subItems && item.subItems.map((sub) => (
+            <span key={sub.id}>{sub.name}</span>
+          ))}
+        </div>
+      ))}
+    </>
+  ) : (
+    <EmptyState />
+  )}
+</div>
+```
+
+### 11.9. Validation Workflow
+
+**Before committing ANY JSX/TSX code:**
+
+1. **Visual Inspection:**
+   - Count opening and closing tags
+   - Verify every `{` has matching `}`
+   - Verify every `(` in JSX has matching `)`
+   - Check that fragments are closed
+   - Verify ternary operators are complete
+
+2. **Editor Validation:**
+   - Use editor's bracket matching (VS Code: Ctrl+Shift+P → "Go to Bracket")
+   - Check for syntax highlighting errors
+   - Verify TypeScript/ESLint shows no errors
+
+3. **Build Validation:**
+   - Run `npm run build` or `next build`
+   - Check for parsing errors
+   - Fix any "Expected '</', got ')'" or similar errors
+
+4. **Linter Validation:**
+   - Run `npm run lint`
+   - Fix all ESLint JSX structure errors
+   - Ensure no warnings about unclosed tags
+
+**REMINDER:** If you create ANY JSX/TSX code that violates these structure rules, the work is INCOMPLETE. Always verify JSX structure is balanced and valid before marking as done. Parsing errors will break the build and prevent deployment.
+
+---
+
+## 12. DIALOG & MODAL POSITIONING RULES — MANDATORY STANDARDS
+
+**CRITICAL:** All dialogs, modals, popovers, and floating panels MUST follow these positioning rules to prevent overflow and ensure proper responsive behavior.
+
+### 12.1. Viewport-Aware Positioning Requirements
+
+**MANDATORY for ALL dialogs/modals:**
+
+1. **Always Position Relative to Trigger:**
+   - Dialogs must open directly below/above/next to their trigger element
+   - Use `getBoundingClientRect()` to get trigger position
+   - Never use fixed positions that don't account for trigger location
+
+2. **Viewport Boundary Checks:**
+   - Minimum 16px margin from all viewport edges
+   - Check for overflow on all sides (top, bottom, left, right)
+   - Adjust position if dialog would overflow viewport
+
+3. **Smart Alignment Strategy:**
+   - **First:** Try aligning with trigger (left/right edge alignment)
+   - **Second:** If alignment causes overflow, try opposite alignment
+   - **Third:** If both fail, position to stay within viewport (prefer side where trigger is located)
+
+4. **Responsive Dimensions:**
+   - Use `maxWidth: calc(100vw - 2rem)` to prevent horizontal overflow
+   - Use `maxHeight: calc(100vh - 2rem)` to prevent vertical overflow
+   - Ensure minimum usable dimensions (200px width, 200px height)
+
+### 12.2. Implementation Pattern
+
+**For ALL positioned dialogs, use this pattern:**
+
+```tsx
+useEffect(() => {
+  if (!isOpen || !triggerRef.current) {
+    setPosition(null)
+    return
+  }
+
+  const updatePosition = () => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+
+    // Wait for next frame to ensure trigger is fully rendered
+    requestAnimationFrame(() => {
+      const triggerElement = triggerRef.current
+      if (!triggerElement) return
+
+      const rect = triggerElement.getBoundingClientRect()
+      
+      // Validate trigger has valid dimensions
+      if (rect.width === 0 || rect.height === 0) {
+        setTimeout(updatePosition, 50)
+        return
+      }
+
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      const margin = 16 // Minimum margin from viewport edges
+      const dialogWidth = 250 // Base dialog width
+      const dialogHeight = 350 // Base dialog height
+      const gap = 8 // Gap between trigger and dialog
+
+      // Calculate position (below trigger in this example)
+      let top = rect.bottom + gap
+      let left: number | undefined = undefined
+      let right: number | undefined = undefined
+
+      // Ensure dialog doesn't overflow bottom
+      const availableHeightBelow = viewportHeight - top - margin
+      if (availableHeightBelow < dialogHeight) {
+        // Constrain height but keep position below trigger
+        const maxHeight = Math.max(200, availableHeightBelow)
+      }
+
+      // Ensure top doesn't go above viewport
+      if (top < margin) {
+        top = margin
+      }
+
+      // Calculate horizontal position with smart alignment
+      const leftAligned = rect.left
+      const leftAlignedRightEdge = leftAligned + dialogWidth
+
+      if (leftAligned >= margin && leftAlignedRightEdge <= viewportWidth - margin) {
+        left = leftAligned
+      } else {
+        const rightAligned = rect.right - dialogWidth
+        if (rightAligned >= margin && rect.right <= viewportWidth - margin) {
+          left = rightAligned
+        } else {
+          // Fallback: position based on trigger location
+          const triggerCenter = rect.left + rect.width / 2
+          const viewportCenter = viewportWidth / 2
+          if (triggerCenter < viewportCenter) {
+            left = margin
+          } else {
+            right = margin
+          }
+        }
+      }
+
+      // Final safety check
+      if (left !== undefined) {
+        if (left < margin) left = margin
+        if (left + dialogWidth > viewportWidth - margin) {
+          right = margin
+          left = undefined
+        }
+      }
+
+      setPosition({ top, left, right })
+    })
+  }
+
+  const timeoutId = setTimeout(updatePosition, 0)
+  window.addEventListener('resize', updatePosition)
+  window.addEventListener('scroll', updatePosition, true)
+
+  return () => {
+    clearTimeout(timeoutId)
+    window.removeEventListener('resize', updatePosition)
+    window.removeEventListener('scroll', updatePosition, true)
+  }
+}, [isOpen, triggerRef])
+```
+
+### 12.3. Style Requirements
+
+**For ALL dialog/modal containers:**
+
+```tsx
+<Card
+  className="fixed z-40 flex flex-col overflow-hidden isolate"
+  style={{
+    top: `${position.top}px`,
+    ...(position.left !== undefined ? { left: `${position.left}px`, right: 'auto' } : {}),
+    ...(position.right !== undefined ? { right: `${position.right}px`, left: 'auto' } : {}),
+    width: `${dialogWidth}px`,
+    height: `${dialogHeight}px`,
+    maxWidth: 'calc(100vw - 2rem)', // Prevent horizontal overflow
+    maxHeight: 'calc(100vh - 2rem)', // Prevent vertical overflow
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  }}
+>
+```
+
+### 12.4. Checklist for All Dialogs/Modals
+
+**Before marking any dialog/modal as complete:**
+
+- [ ] **Position Relative to Trigger:**
+  - Dialog opens directly below/above/next to trigger element
+  - Uses `getBoundingClientRect()` for accurate positioning
+  - No hardcoded positions that ignore trigger location
+
+- [ ] **Viewport Boundary Checks:**
+  - Minimum 16px margin from all edges
+  - Checks for overflow on all sides
+  - Adjusts position when overflow detected
+
+- [ ] **Smart Alignment:**
+  - Tries trigger alignment first
+  - Falls back to opposite alignment if needed
+  - Uses viewport-relative positioning as last resort
+
+- [ ] **Responsive Constraints:**
+  - `maxWidth: calc(100vw - 2rem)` prevents horizontal overflow
+  - `maxHeight: calc(100vh - 2rem)` prevents vertical overflow
+  - Minimum dimensions maintained (200px x 200px)
+
+- [ ] **Rendering Safety:**
+  - Uses `requestAnimationFrame` to wait for DOM ready
+  - Validates trigger dimensions before positioning
+  - Handles resize and scroll events
+
+- [ ] **Compact & Spacious:**
+  - Dialog has appropriate padding (not cramped)
+  - Content is readable and accessible
+  - Touch targets are at least 44x44px on mobile
+
+### 12.5. Common Issues to Avoid
+
+❌ **Don't:**
+- Use fixed positions without viewport checks
+- Ignore trigger element location
+- Forget to handle resize/scroll events
+- Position dialogs without margin checks
+- Use hardcoded dimensions that don't account for viewport size
+
+✅ **Do:**
+- Always position relative to trigger
+- Check viewport boundaries before positioning
+- Use smart alignment strategy
+- Add responsive constraints (maxWidth/maxHeight)
+- Test at all viewport sizes
+- Handle edge cases (near screen edges, small screens)
+
+### 12.6. Examples of Correct Implementation
+
+**Reference implementations:**
+- `src/components/agent-dialog.tsx` - Agent chat dialogs
+- `src/components/ai/agent-chat-panel.tsx` - Agent chat panels
+
+**REMINDER:** If you create ANY dialog, modal, popover, or floating panel without following these positioning rules, the work is INCOMPLETE. Always verify the dialog stays within viewport bounds and positions correctly relative to its trigger element.

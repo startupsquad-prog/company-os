@@ -16,7 +16,13 @@ import {
   Menu,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SidebarGroup, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/layout/sidebar/sidebar-menu'
+import {
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/layout/sidebar/sidebar-menu'
 
 const navigation = [
   {
@@ -141,9 +147,7 @@ export function Sidebar({ className, isCollapsed = false, onCollapse, ...props }
                       >
                         <TransitionLink href={item.url}>
                           <Icon className="h-5 w-5" />
-                          {!isCollapsed && (
-                            <span className="ml-2">{item.title}</span>
-                          )}
+                          {!isCollapsed && <span className="ml-2">{item.title}</span>}
                         </TransitionLink>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -157,4 +161,3 @@ export function Sidebar({ className, isCollapsed = false, onCollapse, ...props }
     </div>
   )
 }
-

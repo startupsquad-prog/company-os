@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { Skeleton } from "@/components/ui/skeleton"
-import { Card, CardContent } from "@/components/ui/card"
+import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardContent } from '@/components/ui/card'
 
 export function TaskKanbanSkeleton() {
-  const columns = ["Pending", "In Progress", "Completed", "Cancelled"]
-  
+  const columns = ['Pending', 'In Progress', 'Completed', 'Cancelled']
+
   return (
     <div className="w-full overflow-x-auto overflow-y-hidden">
       <div className="inline-flex gap-4 md:gap-6 pb-4 p-2 md:p-4 min-h-[500px]">
@@ -16,7 +16,7 @@ export function TaskKanbanSkeleton() {
                 <Skeleton className="h-5 w-24" />
                 <Skeleton className="h-5 w-8" />
               </div>
-              
+
               <div className="space-y-3 overflow-y-auto flex-1 pr-2 min-h-0">
                 {Array.from({ length: 3 }).map((_, idx) => (
                   <Card key={idx} className="bg-card shadow-sm">
@@ -40,7 +40,7 @@ export function TaskKanbanSkeleton() {
                   </Card>
                 ))}
               </div>
-              
+
               <Skeleton className="w-full h-9 mt-3 rounded-md" />
             </div>
           </div>
@@ -49,4 +49,3 @@ export function TaskKanbanSkeleton() {
     </div>
   )
 }
-

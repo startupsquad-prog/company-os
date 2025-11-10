@@ -1,22 +1,10 @@
-"use client"
+'use client'
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Sparkles,
-  Check,
-} from "lucide-react"
+import * as React from 'react'
+import { BadgeCheck, Bell, ChevronsUpDown, Check } from 'lucide-react'
 
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getDiceBearAvatar } from '@/lib/utils'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,101 +16,105 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from "@/components/ui/sidebar"
-import { useRole } from "@/lib/roles/use-role"
-import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
+} from '@/components/ui/sidebar'
+import { useRole } from '@/lib/roles/use-role'
+import { useUser, UserButton } from '@clerk/nextjs'
+import { createClient } from '@/lib/supabase/client'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  const router = useRouter()
   const { roles, activeRole, setActiveRole, loading: roleLoading } = useRole()
-  const [user, setUser] = React.useState<{
+  const { user: clerkUser, isLoaded: userLoaded } = useUser()
+  const [profile, setProfile] = React.useState<{
     name: string
     email: string
     avatar: string
   } | null>(null)
-  const [userLoading, setUserLoading] = React.useState(true)
+  const [profileLoading, setProfileLoading] = React.useState(true)
 
-  // Fetch user data
+  // Fetch profile data from Supabase
   React.useEffect(() => {
-    const loadUser = async () => {
+    const loadProfile = async () => {
+      if (!clerkUser || !userLoaded) {
+        setProfileLoading(false)
+        return
+      }
+
       try {
-        setUserLoading(true)
+        setProfileLoading(true)
         const supabase = createClient()
-        const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
-        
-        if (authError) {
-          console.error('Error getting user:', authError)
-          setUserLoading(false)
-          return
+
+        // Get profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', clerkUser.id)
+          .single()
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Error fetching profile:', profileError)
         }
-        
-        if (authUser) {
-          // Get profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', authUser.id)
-            .single()
 
-          if (profileError && profileError.code !== 'PGRST116') {
-            console.error('Error fetching profile:', profileError)
-          }
+        if (profileData) {
+          const fullName =
+            [profileData.first_name, profileData.last_name].filter(Boolean).join(' ') ||
+            clerkUser.emailAddresses[0]?.emailAddress?.split('@')[0] ||
+            'User'
 
-          if (profile) {
-            const fullName = [profile.first_name, profile.last_name]
-              .filter(Boolean)
-              .join(' ') || authUser.email?.split('@')[0] || 'User'
-            
-            setUser({
-              name: fullName,
-              email: profile.email || authUser.email || '',
-              avatar: profile.avatar_url || '',
-            })
-          } else {
-            setUser({
-              name: authUser.email?.split('@')[0] || 'User',
-              email: authUser.email || '',
-              avatar: '',
-            })
-          }
+          const avatarSeed = profileData.email || clerkUser.emailAddresses[0]?.emailAddress || clerkUser.id || 'default'
+          setProfile({
+            name: fullName,
+            email: profileData.email || clerkUser.emailAddresses[0]?.emailAddress || '',
+            avatar: getDiceBearAvatar(avatarSeed),
+          })
         } else {
-          setUser(null)
+          // Fallback to Clerk user data
+          const email = clerkUser.emailAddresses[0]?.emailAddress || ''
+          const avatarSeed = email || clerkUser.id || 'default'
+          setProfile({
+            name: clerkUser.fullName || clerkUser.firstName || email.split('@')[0] || 'User',
+            email,
+            avatar: getDiceBearAvatar(avatarSeed),
+          })
         }
       } catch (error) {
-        console.error('Error loading user:', error)
+        console.error('Error loading profile:', error)
+        // Fallback to Clerk user data
+        const email = clerkUser.emailAddresses[0]?.emailAddress || ''
+        const avatarSeed = email || clerkUser.id || 'default'
+        setProfile({
+          name: clerkUser.fullName || clerkUser.firstName || email.split('@')[0] || 'User',
+          email,
+          avatar: getDiceBearAvatar(avatarSeed),
+        })
       } finally {
-        setUserLoading(false)
+        setProfileLoading(false)
       }
     }
 
-    loadUser()
-  }, [])
+    loadProfile()
+  }, [clerkUser, userLoaded])
 
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    toast.success('Signed out successfully')
-    router.push('/login')
-  }
-
-  if (!user || userLoading || roleLoading) {
+  if (!clerkUser || !userLoaded || !profile || profileLoading || roleLoading) {
     return (
       <SidebarMenu>
         <SidebarMenuItem>
           <SidebarMenuButton size="lg" disabled>
             <Avatar className="h-8 w-8 rounded-lg">
-              <AvatarFallback className="rounded-lg">...</AvatarFallback>
+              <AvatarFallback className="rounded-lg">
+                <Skeleton className="h-full w-full rounded-lg" />
+              </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-semibold">Loading...</span>
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-3 w-16 mt-1" />
             </div>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -130,12 +122,13 @@ export function NavUser() {
     )
   }
 
-  const initials = user.name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'U'
+  const initials =
+    profile.name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'U'
 
   return (
     <SidebarMenu>
@@ -147,13 +140,17 @@ export function NavUser() {
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={user.name} />
+                <AvatarImage src={profile.avatar} alt={profile.name} />
                 <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{user.name}</span>
+                <span className="truncate font-semibold">{profile.name}</span>
                 <span className="truncate text-xs">
-                  {activeRole ? activeRole.role_name : roles.length > 0 ? roles[0].role_name : 'No role'}
+                  {activeRole
+                    ? activeRole.role_name
+                    : roles.length > 0
+                      ? roles[0].role_name
+                      : 'No role'}
                 </span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -161,27 +158,31 @@ export function NavUser() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarImage src={profile.avatar} alt={profile.name} />
                   <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{user.name}</span>
+                  <span className="truncate font-semibold">{profile.name}</span>
                   <span className="truncate text-xs">
-                    {activeRole ? activeRole.role_name : roles.length > 0 ? roles[0].role_name : 'No role'}
+                    {activeRole
+                      ? activeRole.role_name
+                      : roles.length > 0
+                        ? roles[0].role_name
+                        : 'No role'}
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                  <span className="truncate text-xs text-muted-foreground">{profile.email}</span>
                 </div>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            
+
             {/* Role Switcher - only show if multiple roles */}
             {roles.length > 1 && (
               <>
@@ -193,17 +194,16 @@ export function NavUser() {
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent>
                       {roles.map((role) => (
-                        <DropdownMenuItem
-                          key={role.role_id}
-                          onClick={() => setActiveRole(role)}
-                        >
+                        <DropdownMenuItem key={role.role_id} onClick={() => setActiveRole(role)}>
                           {activeRole?.role_id === role.role_id && (
                             <Check className="mr-2 h-4 w-4" />
                           )}
                           {!activeRole?.role_id && role.role_id === roles[0].role_id && (
                             <Check className="mr-2 h-4 w-4" />
                           )}
-                          <span className={activeRole?.role_id === role.role_id ? 'font-semibold' : ''}>
+                          <span
+                            className={activeRole?.role_id === role.role_id ? 'font-semibold' : ''}
+                          >
                             {role.role_name}
                           </span>
                         </DropdownMenuItem>
@@ -226,10 +226,9 @@ export function NavUser() {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
+            <div className="px-2 py-1.5">
+              <UserButton afterSignOutUrl="/login" />
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

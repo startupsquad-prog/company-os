@@ -186,3 +186,4 @@ COMMENT ON COLUMN core.notification_triggers.template_title IS 'Optional: Custom
 COMMENT ON COLUMN core.notification_triggers.template_message IS 'Optional: Custom message template with placeholders';
 
 
+

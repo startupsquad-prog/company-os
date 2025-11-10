@@ -38,6 +38,7 @@ The theme uses a two-layer token system:
 ## Theme Provider
 
 The `ThemeProvider` uses `data-theme` attribute:
+
 - `data-theme="light"` - Light mode
 - `data-theme="dark"` - Dark mode
 - `data-theme="system"` - Follows system preference
@@ -60,6 +61,7 @@ All components automatically use tokens via Tailwind classes:
 ## Tailwind Config
 
 The `tailwind.config.ts` supports both `class` and `data-theme` dark mode:
+
 ```ts
 darkMode: ['class', '[data-theme="dark"]']
 ```
@@ -76,12 +78,14 @@ darkMode: ['class', '[data-theme="dark"]']
 ## Theme Colors
 
 ### Light Mode
+
 - Background: Pure white (`0 0% 100%`)
 - Foreground: Near black (`0 0% 3.9%`)
 - Primary: Dark gray (`0 0% 9%`)
 - Border: Light gray (`0 0% 89.8%`)
 
 ### Dark Mode
+
 - Background: Near black (`0 0% 3.9%`)
 - Foreground: Near white (`0 0% 98%`)
 - Primary: Near white (`0 0% 98%`)
@@ -90,7 +94,7 @@ darkMode: ['class', '[data-theme="dark"]']
 ## Customization
 
 To customize the theme:
+
 1. Edit `src/styles/themes/vercel.css` for TweakCN tokens
 2. The mapping in `src/styles/tokens.css` will automatically apply changes
 3. All components will update via CSS variables
-

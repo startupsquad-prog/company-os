@@ -23,7 +23,7 @@ export function clearClickPosition() {
 export function createPageTransitionAnimation(
   clickX?: number,
   clickY?: number,
-  blur = true,
+  blur = true
 ): string {
   // Calculate click position as percentage if provided
   const getClickPosition = () => {
@@ -36,9 +36,10 @@ export function createPageTransitionAnimation(
   }
 
   const circlePosition = getClickPosition()
-  const positionHash = clickX !== undefined && clickY !== undefined
-    ? `-${Math.round(clickX / 10)}-${Math.round(clickY / 10)}`
-    : ''
+  const positionHash =
+    clickX !== undefined && clickY !== undefined
+      ? `-${Math.round(clickX / 10)}-${Math.round(clickY / 10)}`
+      : ''
   const animationName = `page-reveal${positionHash}${blur ? '-blur' : ''}`
 
   return `
@@ -93,4 +94,3 @@ if (typeof window !== 'undefined') {
   const defaultAnimationCSS = createPageTransitionAnimation(undefined, undefined, true)
   applyPageTransitionStyles(defaultAnimationCSS)
 }
-

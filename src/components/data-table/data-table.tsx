@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState } from "react"
+import { useState } from 'react'
 import {
   ColumnDef,
   flexRender,
@@ -10,12 +10,19 @@ import {
   VisibilityState,
   ColumnFiltersState,
   RowSelectionState,
-} from "@tanstack/react-table"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
-import { DataTableToolbar } from "./data-table-toolbar"
-import { TaskTableSkeleton } from "@/app/tasks/components/task-table-skeleton"
-import { DataTablePagination } from "./data-table-pagination"
+} from '@tanstack/react-table'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Skeleton } from '@/components/ui/skeleton'
+import { DataTableToolbar } from './data-table-toolbar'
+import { TaskTableSkeleton } from '@/app/tasks/components/task-table-skeleton'
+import { DataTablePagination } from './data-table-pagination'
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -55,7 +62,7 @@ export function DataTable<TData, TValue>({
   onSearchChange,
   loading = false,
   initialLoading = false,
-  view = "table",
+  view = 'table',
   onViewChange,
   onAdd,
   onEdit,
@@ -109,30 +116,27 @@ export function DataTable<TData, TValue>({
   })
 
   const renderView = () => {
-    if (initialLoading && view === "table") {
+    if (initialLoading && view === 'table') {
       return <TaskTableSkeleton columns={columns.length} />
     }
 
-    if (view !== "table" && renderCustomView) {
+    if (view !== 'table' && renderCustomView) {
       return renderCustomView(view, data)
     }
 
     // Default table view
     return (
-      <div className="flex-1 overflow-auto rounded-md border min-h-0">
+      <div className="flex-1 overflow-x-auto overflow-y-auto rounded-md border min-h-0 overscroll-x-contain">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="text-sm">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id} className="py-2 px-3">
+                    <TableHead key={header.id} className="py-2 px-2 sm:px-3 whitespace-nowrap">
                       {header.isPlaceholder
                         ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                        : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
                   )
                 })}
@@ -144,7 +148,7 @@ export function DataTable<TData, TValue>({
               Array.from({ length: 5 }).map((_, index) => (
                 <TableRow key={`loading-${index}`}>
                   {columns.map((_, colIndex) => (
-                    <TableCell key={colIndex} className="py-2 px-3">
+                    <TableCell key={colIndex} className="py-2 px-2 sm:px-3">
                       <Skeleton className="h-4 w-full" />
                     </TableCell>
                   ))}
@@ -154,11 +158,11 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
+                  data-state={row.getIsSelected() && 'selected'}
                   className="text-sm"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-2 px-3">
+                    <TableCell key={cell.id} className="py-2 px-2 sm:px-3 whitespace-nowrap">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -192,10 +196,8 @@ export function DataTable<TData, TValue>({
         addButtonIcon={addButtonIcon}
         filterConfig={filterConfig}
       />
-      <div className="flex-1 min-h-0 flex flex-col min-w-0">
-        {renderView()}
-      </div>
-      {(view === "table" || view === "list") && (
+      <div className="flex-1 min-h-0 flex flex-col min-w-0">{renderView()}</div>
+      {(view === 'table' || view === 'list') && (
         <div className="flex-shrink-0 bg-background border-t">
           <DataTablePagination table={table} />
         </div>
@@ -203,4 +205,3 @@ export function DataTable<TData, TValue>({
     </div>
   )
 }
-

@@ -15,7 +15,7 @@ This guide explains how to set up the `task-attachments` storage bucket in Supab
    - **Name**: `task-attachments`
    - **Public bucket**: Unchecked (Private)
    - **File size limit**: `52428800` (50 MB)
-   - **Allowed MIME types**: 
+   - **Allowed MIME types**:
      - `image/*`
      - `application/pdf`
      - `application/msword`
@@ -32,6 +32,7 @@ This guide explains how to set up the `task-attachments` storage bucket in Supab
    - Create the following policies:
 
 #### SELECT Policy (Read/Download)
+
 ```sql
 CREATE POLICY "Users can read task attachments"
 ON storage.objects FOR SELECT
@@ -62,6 +63,7 @@ USING (
 ```
 
 #### INSERT Policy (Upload)
+
 ```sql
 CREATE POLICY "Users can upload task attachments"
 ON storage.objects FOR INSERT
@@ -93,6 +95,7 @@ WITH CHECK (
 ```
 
 #### UPDATE Policy
+
 ```sql
 CREATE POLICY "Users can update task attachments"
 ON storage.objects FOR UPDATE
@@ -124,6 +127,7 @@ USING (
 ```
 
 #### DELETE Policy
+
 ```sql
 CREATE POLICY "Users can delete task attachments"
 ON storage.objects FOR DELETE
@@ -157,11 +161,13 @@ USING (
 ### Option 2: Via SQL Migration
 
 If you have the necessary permissions, you can run the migration file:
+
 ```bash
 supabase migration up
 ```
 
 Or apply it directly via the Supabase SQL Editor:
+
 1. Go to SQL Editor in Supabase Dashboard
 2. Copy the contents of `supabase/migrations/20250109000001_create_task_attachments_bucket.sql`
 3. Run the SQL
@@ -169,11 +175,13 @@ Or apply it directly via the Supabase SQL Editor:
 ### File Path Structure
 
 Files are stored with the following structure:
+
 ```
 task-attachments/{task_id}/{timestamp}.{ext}
 ```
 
 Example:
+
 ```
 task-attachments/123e4567-e89b-12d3-a456-426614174000/1704067200000.pdf
 ```
@@ -181,6 +189,7 @@ task-attachments/123e4567-e89b-12d3-a456-426614174000/1704067200000.pdf
 ### Verification
 
 After setting up the bucket, verify it works by:
+
 1. Opening a task in the application
 2. Trying to upload a file attachment
 3. Verifying the file appears in the task attachments list
@@ -189,16 +198,18 @@ After setting up the bucket, verify it works by:
 ### Troubleshooting
 
 **Error: "Bucket not found"**
+
 - Ensure the bucket name is exactly `task-attachments`
 - Check that the bucket was created successfully in the Storage dashboard
 
 **Error: "Permission denied"**
+
 - Verify RLS policies are set up correctly
 - Check that the user has the appropriate role/permissions
 - Ensure the task access rules match the storage policies
 
 **Error: "File size limit exceeded"**
+
 - The bucket has a 50MB file size limit
 - For larger files, increase the limit in bucket settings or split files
-
 

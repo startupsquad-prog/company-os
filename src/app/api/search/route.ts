@@ -51,7 +51,9 @@ export async function GET(request: Request) {
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('id, first_name, last_name, email, phone, created_at')
-      .or(`first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm}`)
+      .or(
+        `first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm}`
+      )
       .is('deleted_at', null)
       .limit(limit)
       .order('created_at', { ascending: false })
@@ -69,7 +71,11 @@ export async function GET(request: Request) {
       console.error('Profiles search error:', profilesError)
     }
 
-    const total = (tasks?.length || 0) + (contacts?.length || 0) + (companies?.length || 0) + (profiles?.length || 0)
+    const total =
+      (tasks?.length || 0) +
+      (contacts?.length || 0) +
+      (companies?.length || 0) +
+      (profiles?.length || 0)
 
     return NextResponse.json({
       tasks: tasks || [],
@@ -93,5 +99,4 @@ export async function GET(request: Request) {
     )
   }
 }
-
 

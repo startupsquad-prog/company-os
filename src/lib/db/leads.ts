@@ -1,4 +1,5 @@
 import { createServerClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { getClerkUserId } from '@/lib/auth/clerk'
 import type {
   Lead,
   LeadFull,
@@ -13,21 +14,19 @@ import type {
 } from '@/lib/types/leads'
 
 /**
- * Get current user's profile ID
+ * Get current user's profile ID using Clerk user ID
  */
 async function getCurrentProfileId(supabase: Awaited<ReturnType<typeof createServerClient>>) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const userId = await getClerkUserId()
 
-  if (!user) {
+  if (!userId) {
     throw new Error('Unauthorized')
   }
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .single()
 
   if (!profile) {
@@ -38,18 +37,16 @@ async function getCurrentProfileId(supabase: Awaited<ReturnType<typeof createSer
 }
 
 /**
- * Get current user's user ID
+ * Get current user's Clerk user ID
  */
-async function getCurrentUserId(supabase: Awaited<ReturnType<typeof createServerClient>>) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+async function getCurrentUserId() {
+  const userId = await getClerkUserId()
 
-  if (!user) {
+  if (!userId) {
     throw new Error('Unauthorized')
   }
 
-  return user.id
+  return userId
 }
 
 /**
@@ -59,50 +56,53 @@ export async function getLeads(
   filters: LeadFilters = {},
   sort: LeadSort = { field: 'created_at', direction: 'desc' },
   page: number = 1,
-  pageSize: number = 10
+  pageSize: number = 10,
+  verticalId?: string | 'all'
 ) {
   // Use service role client to access public view (PostgREST only exposes public schema)
   const supabase = createServiceRoleClient()
-  
+
   // Fetch leads from public view (which maps to crm.leads)
-  let query = supabase
-    .from('leads')
-    .select('*', { count: 'exact' })
-    .is('deleted_at', null)
+  let query = supabase.from('leads').select('*', { count: 'exact' }).is('deleted_at', null)
+
+  // Apply vertical filter if provided
+  if (verticalId && verticalId !== 'all') {
+    query = query.eq('vertical_id', verticalId)
+  }
 
   // Apply filters
   if (filters.status && filters.status.length > 0) {
     query = query.in('status', filters.status)
   }
-  
+
   if (filters.owner_id && filters.owner_id.length > 0) {
     query = query.in('owner_id', filters.owner_id)
   }
-  
+
   if (filters.source && filters.source.length > 0) {
     query = query.in('source', filters.source)
   }
-  
+
   if (filters.date_from) {
     query = query.gte('created_at', filters.date_from)
   }
-  
+
   if (filters.date_to) {
     query = query.lte('created_at', filters.date_to)
   }
-  
+
   if (filters.value_min !== undefined) {
     query = query.gte('value', filters.value_min)
   }
-  
+
   if (filters.value_max !== undefined) {
     query = query.lte('value', filters.value_max)
   }
-  
+
   if (filters.tags && filters.tags.length > 0) {
     query = query.overlaps('tags', filters.tags)
   }
-  
+
   // Search filter (searches in contact name, company name, notes)
   if (filters.search) {
     const searchTerm = `%${filters.search}%`
@@ -125,44 +125,51 @@ export async function getLeads(
   }
 
   // Fetch related data separately (PostgREST doesn't support cross-schema joins)
-  const contactIds = [...new Set((leads || []).map(l => l.contact_id).filter(Boolean) as string[])]
-  const companyIds = [...new Set((leads || []).map(l => l.company_id).filter(Boolean) as string[])]
-  const ownerIds = [...new Set((leads || []).map(l => l.owner_id).filter(Boolean) as string[])]
+  const contactIds = [
+    ...new Set((leads || []).map((l) => l.contact_id).filter(Boolean) as string[]),
+  ]
+  const companyIds = [
+    ...new Set((leads || []).map((l) => l.company_id).filter(Boolean) as string[]),
+  ]
+  const ownerIds = [...new Set((leads || []).map((l) => l.owner_id).filter(Boolean) as string[])]
 
   // Fetch contacts
-  const { data: contacts } = contactIds.length > 0
-    ? await supabase
-        .schema('core')
-        .from('contacts')
-        .select('id, name, email, phone')
-        .in('id', contactIds)
-    : { data: [] }
+  const { data: contacts } =
+    contactIds.length > 0
+      ? await supabase
+          .schema('core')
+          .from('contacts')
+          .select('id, name, email, phone')
+          .in('id', contactIds)
+      : { data: [] }
 
   // Fetch companies
-  const { data: companies } = companyIds.length > 0
-    ? await supabase
-        .schema('core')
-        .from('companies')
-        .select('id, name, website, industry')
-        .in('id', companyIds)
-    : { data: [] }
+  const { data: companies } =
+    companyIds.length > 0
+      ? await supabase
+          .schema('core')
+          .from('companies')
+          .select('id, name, website, industry')
+          .in('id', companyIds)
+      : { data: [] }
 
   // Fetch profiles (owners)
-  const { data: profiles } = ownerIds.length > 0
-    ? await supabase
-        .schema('core')
-        .from('profiles')
-        .select('id, first_name, last_name, email, avatar_url')
-        .in('id', ownerIds)
-    : { data: [] }
+  const { data: profiles } =
+    ownerIds.length > 0
+      ? await supabase
+          .schema('core')
+          .from('profiles')
+          .select('id, first_name, last_name, email, avatar_url')
+          .in('id', ownerIds)
+      : { data: [] }
 
   // Create lookup maps
-  const contactsMap = new Map((contacts || []).map(c => [c.id, c]))
-  const companiesMap = new Map((companies || []).map(c => [c.id, c]))
-  const profilesMap = new Map((profiles || []).map(p => [p.id, p]))
+  const contactsMap = new Map((contacts || []).map((c) => [c.id, c]))
+  const companiesMap = new Map((companies || []).map((c) => [c.id, c]))
+  const profilesMap = new Map((profiles || []).map((p) => [p.id, p]))
 
   // Combine leads with relations
-  let leadsWithRelations = (leads || []).map(lead => ({
+  let leadsWithRelations = (leads || []).map((lead) => ({
     ...lead,
     contact: lead.contact_id ? contactsMap.get(lead.contact_id) || null : null,
     company: lead.company_id ? companiesMap.get(lead.company_id) || null : null,
@@ -179,7 +186,7 @@ export async function getLeads(
       const companyName = lead.company?.name?.toLowerCase() || ''
       const notes = lead.notes?.toLowerCase() || ''
       const contactEmail = lead.contact?.email?.toLowerCase() || ''
-      
+
       return (
         contactName.includes(searchLower) ||
         companyName.includes(searchLower) ||
@@ -220,7 +227,7 @@ export async function getLeads(
   )
 
   // If search filter was applied, use filtered count; otherwise use query count
-  const finalTotal = filters.search ? leadsWithInteractions.length : (count || 0)
+  const finalTotal = filters.search ? leadsWithInteractions.length : count || 0
 
   return {
     leads: leadsWithInteractions,
@@ -259,13 +266,28 @@ export async function getLeadById(id: string): Promise<LeadFull | null> {
   // Fetch related data separately
   const [contact, company, owner] = await Promise.all([
     lead.contact_id
-      ? supabase.schema('core').from('contacts').select('id, name, email, phone').eq('id', lead.contact_id).single()
+      ? supabase
+          .schema('core')
+          .from('contacts')
+          .select('id, name, email, phone')
+          .eq('id', lead.contact_id)
+          .single()
       : Promise.resolve({ data: null }),
     lead.company_id
-      ? supabase.schema('core').from('companies').select('id, name, website, industry').eq('id', lead.company_id).single()
+      ? supabase
+          .schema('core')
+          .from('companies')
+          .select('id, name, website, industry')
+          .eq('id', lead.company_id)
+          .single()
       : Promise.resolve({ data: null }),
     lead.owner_id
-      ? supabase.schema('core').from('profiles').select('id, first_name, last_name, email, avatar_url').eq('id', lead.owner_id).single()
+      ? supabase
+          .schema('core')
+          .from('profiles')
+          .select('id, first_name, last_name, email, avatar_url')
+          .eq('id', lead.owner_id)
+          .single()
       : Promise.resolve({ data: null }),
   ])
 
@@ -314,26 +336,20 @@ export async function createLead(data: CreateLeadInput): Promise<Lead> {
     created_by: userId,
   }
 
-  const { data: lead, error } = await supabase
-    .from('leads')
-    .insert(leadData)
-    .select()
-    .single()
+  const { data: lead, error } = await supabase.from('leads').insert(leadData).select().single()
 
   if (error) {
     throw new Error(`Failed to create lead: ${error.message}`)
   }
 
   // Create initial status history entry
-  await supabase
-    .from('status_history')
-    .insert({
-      lead_id: lead.id,
-      status: lead.status,
-      previous_status: null,
-      notes: 'Lead created',
-      created_by: userId,
-    })
+  await supabase.from('status_history').insert({
+    lead_id: lead.id,
+    status: lead.status,
+    previous_status: null,
+    notes: 'Lead created',
+    created_by: userId,
+  })
 
   // Trigger notification if lead has owner
   // Note: owner_id is a profile_id, we need to get the user_id for notifications
@@ -350,7 +366,7 @@ export async function createLead(data: CreateLeadInput): Promise<Lead> {
           console.error('Failed to get owner user_id for notification:', profileError)
           return
         }
-        
+
         if (ownerProfile?.user_id) {
           import('@/lib/notifications/trigger-notification').then(({ triggerNotification }) => {
             triggerNotification('lead', lead.id, 'assigned', 'lead_assigned', {
@@ -409,7 +425,7 @@ export async function updateLead(id: string, data: Partial<CreateLeadInput>): Pr
           console.error('Failed to get owner user_id for notification:', profileError)
           return
         }
-        
+
         import('@/lib/notifications/trigger-notification').then(({ triggerNotification }) => {
           triggerNotification('lead', id, 'assigned', 'lead_assigned', {
             actorId: userId,
@@ -479,15 +495,13 @@ export async function updateLeadStatus(input: UpdateLeadStatusInput): Promise<Le
   }
 
   // Create status history entry
-  await supabase
-    .from('status_history')
-    .insert({
-      lead_id: input.lead_id,
-      status: input.status,
-      previous_status: previousStatus,
-      notes: input.notes || null,
-      created_by: userId,
-    })
+  await supabase.from('status_history').insert({
+    lead_id: input.lead_id,
+    status: input.status,
+    previous_status: previousStatus,
+    notes: input.notes || null,
+    created_by: userId,
+  })
 
   // Trigger notification for status change
   if (previousStatus !== input.status) {
@@ -520,21 +534,26 @@ export async function getLeadInteractions(leadId: string): Promise<Interaction[]
   }
 
   // Fetch profiles separately
-  const createdByIds = [...new Set((interactions || []).map(i => i.created_by).filter(Boolean) as string[])]
-  const { data: profiles } = createdByIds.length > 0
-    ? await supabase
-        .schema('core')
-        .from('profiles')
-        .select('id, first_name, last_name, email, avatar_url')
-        .in('user_id', createdByIds)
-    : { data: [] }
+  const createdByIds = [
+    ...new Set((interactions || []).map((i) => i.created_by).filter(Boolean) as string[]),
+  ]
+  const { data: profiles } =
+    createdByIds.length > 0
+      ? await supabase
+          .schema('core')
+          .from('profiles')
+          .select('id, first_name, last_name, email, avatar_url')
+          .in('user_id', createdByIds)
+      : { data: [] }
 
   // Create lookup map (note: profiles.user_id maps to interactions.created_by)
-  const profilesMap = new Map((profiles || []).map(p => [p.user_id, p]))
+  const profilesMap = new Map((profiles || []).map((p) => [p.user_id, p]))
 
   return (interactions || []).map((interaction) => ({
     ...interaction,
-    created_by_profile: interaction.created_by ? profilesMap.get(interaction.created_by) || null : null,
+    created_by_profile: interaction.created_by
+      ? profilesMap.get(interaction.created_by) || null
+      : null,
   })) as Interaction[]
 }
 
@@ -595,21 +614,23 @@ export async function getLeadStatusHistory(leadId: string): Promise<StatusHistor
   }
 
   // Fetch profiles separately
-  const createdByIds = [...new Set((history || []).map(h => h.created_by).filter(Boolean) as string[])]
-  const { data: profiles } = createdByIds.length > 0
-    ? await supabase
-        .schema('core')
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .in('user_id', createdByIds)
-    : { data: [] }
+  const createdByIds = [
+    ...new Set((history || []).map((h) => h.created_by).filter(Boolean) as string[]),
+  ]
+  const { data: profiles } =
+    createdByIds.length > 0
+      ? await supabase
+          .schema('core')
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('user_id', createdByIds)
+      : { data: [] }
 
   // Create lookup map
-  const profilesMap = new Map((profiles || []).map(p => [p.user_id, p]))
+  const profilesMap = new Map((profiles || []).map((p) => [p.user_id, p]))
 
   return (history || []).map((entry) => ({
     ...entry,
     created_by_profile: entry.created_by ? profilesMap.get(entry.created_by) || null : null,
   })) as StatusHistoryEntry[]
 }
-

@@ -3,15 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  ShoppingCart,
-  Settings,
-  Menu,
-  X,
-} from 'lucide-react'
+import { LayoutDashboard, Users, FileText, ShoppingCart, Settings, Menu, X } from 'lucide-react'
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -32,14 +24,8 @@ export function Sidebar() {
       )}
     >
       <div className="flex h-16 items-center justify-between border-b px-4">
-        {!isCollapsed && (
-          <h2 className="text-lg font-semibold">Company OS</h2>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-        >
+        {!isCollapsed && <h2 className="text-lg font-semibold">Company OS</h2>}
+        <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)}>
           {isCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
         </Button>
       </div>
@@ -50,10 +36,7 @@ export function Sidebar() {
             <Button
               key={item.href}
               variant="ghost"
-              className={cn(
-                'w-full justify-start',
-                isCollapsed && 'justify-center px-0'
-              )}
+              className={cn('w-full justify-start', isCollapsed && 'justify-center px-0')}
             >
               <Icon className="h-5 w-5" />
               {!isCollapsed && <span className="ml-2">{item.label}</span>}
@@ -64,4 +47,3 @@ export function Sidebar() {
     </aside>
   )
 }
-

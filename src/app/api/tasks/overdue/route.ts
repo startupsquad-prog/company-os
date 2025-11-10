@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getOverdueTasksCount, getOverdueTasks } from '@/lib/db/tasks'
+import { getClerkUserId, getCurrentProfileId } from '@/lib/auth/clerk'
 import { createServerClient } from '@/lib/supabase/server'
 
 /**
@@ -12,24 +13,12 @@ export async function GET(request: NextRequest) {
     const includeList = searchParams.get('include_list') === 'true'
     const assignedToMe = searchParams.get('assigned_to_me') === 'true'
 
-    const supabase = await createServerClient()
     let assignedTo: string | undefined
 
     if (assignedToMe) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single()
-
-        if (profile) {
-          assignedTo = (profile as { id: string }).id
-        }
+      const profileId = await getCurrentProfileId()
+      if (profileId) {
+        assignedTo = profileId
       }
     }
 
@@ -51,4 +40,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { getClerkUserId } from '@/lib/auth/clerk'
 import {
   getNotificationPreferences,
   updateNotificationPreference,
@@ -16,16 +16,13 @@ import {
  */
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const userId = await getClerkUserId()
 
-    if (!user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const preferences = await getNotificationPreferences(user.id)
+    const preferences = await getNotificationPreferences(userId)
 
     return NextResponse.json({ data: preferences })
   } catch (error) {
@@ -44,12 +41,9 @@ export async function GET(req: NextRequest) {
  */
 export async function PATCH(req: NextRequest) {
   try {
-    const supabase = await createServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const userId = await getClerkUserId()
 
-    if (!user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -57,17 +51,10 @@ export async function PATCH(req: NextRequest) {
     const { notification_type, ...updates } = body
 
     if (!notification_type) {
-      return NextResponse.json(
-        { error: 'notification_type is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'notification_type is required' }, { status: 400 })
     }
 
-    const preference = await updateNotificationPreference(
-      user.id,
-      notification_type,
-      updates
-    )
+    const preference = await updateNotificationPreference(userId, notification_type, updates)
 
     return NextResponse.json({ data: preference })
   } catch (error) {

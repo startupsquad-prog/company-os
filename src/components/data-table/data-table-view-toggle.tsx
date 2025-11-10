@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { LayoutGrid, List, Table } from "lucide-react"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { LayoutGrid, List, Table } from 'lucide-react'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 
 interface DataTableViewToggleProps {
   view: string
@@ -10,7 +10,13 @@ interface DataTableViewToggleProps {
 
 export function DataTableViewToggle({ view, onViewChange }: DataTableViewToggleProps) {
   return (
-    <ToggleGroup type="single" variant="outline" value={view} onValueChange={onViewChange} className="h-8">
+    <ToggleGroup
+      type="single"
+      variant="outline"
+      value={view}
+      onValueChange={onViewChange}
+      className="h-8"
+    >
       <ToggleGroupItem value="table" aria-label="Table view" className="h-8 px-2">
         <Table className="h-3.5 w-3.5" />
       </ToggleGroupItem>
@@ -23,4 +29,3 @@ export function DataTableViewToggle({ view, onViewChange }: DataTableViewToggleP
     </ToggleGroup>
   )
 }
-

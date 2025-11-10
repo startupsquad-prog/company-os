@@ -7,19 +7,24 @@ import { useAgentChat } from '@/lib/hooks/useAgentChat'
 
 export function AgentChatManager() {
   const [openAgentId, setOpenAgentId] = useState<string | null>(null)
-  const [iconRefs, setIconRefs] = useState<Map<string, React.RefObject<HTMLButtonElement | null>>>(new Map())
+  const [iconRefs, setIconRefs] = useState<Map<string, React.RefObject<HTMLButtonElement | null>>>(
+    new Map()
+  )
 
-  const handleAgentClick = useCallback((agentId: string, iconRef: React.RefObject<HTMLButtonElement | null>) => {
-    // Store the icon ref for positioning
-    setIconRefs((prev) => {
-      const newMap = new Map(prev)
-      newMap.set(agentId, iconRef)
-      return newMap
-    })
+  const handleAgentClick = useCallback(
+    (agentId: string, iconRef: React.RefObject<HTMLButtonElement | null>) => {
+      // Store the icon ref for positioning
+      setIconRefs((prev) => {
+        const newMap = new Map(prev)
+        newMap.set(agentId, iconRef)
+        return newMap
+      })
 
-    // Toggle agent chat
-    setOpenAgentId((prev) => (prev === agentId ? null : agentId))
-  }, [])
+      // Toggle agent chat
+      setOpenAgentId((prev) => (prev === agentId ? null : agentId))
+    },
+    []
+  )
 
   const handleCloseAgent = useCallback(() => {
     setOpenAgentId(null)
@@ -70,4 +75,3 @@ function AgentChatWrapper({ agentId, iconRef, isOpen, onClose }: AgentChatWrappe
     />
   )
 }
-

@@ -7,27 +7,32 @@ We've integrated Trigger.dev v4 into the Company OS project to enable agentic AI
 ## What's Been Set Up
 
 ### 1. Trigger.dev MCP Server
+
 - ✅ Installed and configured for Cursor
 - ✅ Located at `.cursor/mcp.json`
 - ✅ Configured for dev environment only
 
 ### 2. Trigger.dev v4 Project
+
 - ✅ Initialized with project ID: `proj_oqmifvryosgmasgpkyqi`
 - ✅ Configuration file: `trigger.config.ts`
 - ✅ Tasks directory: `src/trigger/`
 
 ### 3. AI Chatflow Task
+
 - ✅ Created `src/trigger/ai-chatflow.ts` - Background task for AI processing
 - ✅ Supports authentication, logging, and error handling
 - ✅ Can be used for complex agentic workflows
 
 ### 4. New API Route
+
 - ✅ Created `src/app/api/ai/chatflow/route.ts`
 - ✅ Supports real-time streaming for chat
 - ✅ Can optionally trigger Trigger.dev tasks for analytics/logging
 - ✅ Maintains backward compatibility with existing frontend
 
 ### 5. Frontend Integration
+
 - ✅ Updated `useAiChat` hook to use `/api/ai/chatflow` endpoint
 - ✅ No changes needed to UI components
 
@@ -44,6 +49,7 @@ API Route (/api/ai/chatflow)
 ```
 
 **Why Hybrid?**
+
 - **Real-time streaming**: Direct API for immediate chat responses
 - **Background processing**: Trigger.dev for complex workflows, analytics, logging
 - **Best of both worlds**: Fast responses + powerful background capabilities
@@ -76,6 +82,7 @@ npm run dev:trigger
 ```
 
 This starts the Trigger.dev development server which:
+
 - Watches for task changes
 - Provides local development environment
 - Syncs with Trigger.dev cloud
@@ -85,11 +92,13 @@ This starts the Trigger.dev development server which:
 For full development, run both:
 
 **Terminal 1:**
+
 ```bash
 npm run dev
 ```
 
 **Terminal 2:**
+
 ```bash
 npm run dev:trigger
 ```
@@ -111,6 +120,7 @@ TRIGGER_SECRET_KEY=tr_dev_...
 ### Trigger.dev Config
 
 See `trigger.config.ts` for:
+
 - Project ID
 - Runtime settings
 - Retry policies
@@ -127,21 +137,19 @@ The frontend automatically uses the new endpoint. No changes needed!
 If you want to trigger the background task:
 
 ```typescript
-import { tasks } from "@trigger.dev/sdk/v3";
-import { aiChatflowTask } from "@/trigger/ai-chatflow";
+import { tasks } from '@trigger.dev/sdk/v3'
+import { aiChatflowTask } from '@/trigger/ai-chatflow'
 
 // Trigger task
 const handle = await tasks.trigger(aiChatflowTask, {
-  userId: "user-id",
-  messages: [
-    { role: "user", content: "Hello!" }
-  ],
-  sessionId: "session-123",
-});
+  userId: 'user-id',
+  messages: [{ role: 'user', content: 'Hello!' }],
+  sessionId: 'session-123',
+})
 
 // Wait for completion
-const run = await handle.jobRun.waitForCompletion();
-console.log(run.output);
+const run = await handle.jobRun.waitForCompletion()
+console.log(run.output)
 ```
 
 ### Creating New Agentic Workflows
@@ -149,17 +157,17 @@ console.log(run.output);
 Create new tasks in `src/trigger/`:
 
 ```typescript
-import { logger, tasks } from "@trigger.dev/sdk/v3";
+import { logger, tasks } from '@trigger.dev/sdk/v3'
 
 export const myAgenticTask = tasks.create({
-  id: "my-agentic-task",
+  id: 'my-agentic-task',
   run: async (payload, { ctx }) => {
     // Your agentic AI logic here
     // - Multiple AI calls
     // - External API integrations
     // - Complex workflows
   },
-});
+})
 ```
 
 ## Monitoring
@@ -169,6 +177,7 @@ export const myAgenticTask = tasks.create({
 Visit: https://cloud.trigger.dev/projects/v3/proj_oqmifvryosgmasgpkyqi
 
 View:
+
 - Task runs
 - Logs
 - Errors
@@ -177,6 +186,7 @@ View:
 ### Local Logs
 
 Check console for:
+
 - `🚀 [API Chatflow]` - API route logs
 - `🤖 [Trigger]` - Trigger.dev task logs
 
@@ -213,4 +223,3 @@ Check console for:
 - [Trigger.dev Docs](https://trigger.dev/docs)
 - [Trigger.dev MCP Docs](https://trigger.dev/docs/mcp)
 - [Trigger.dev Discord](https://trigger.dev/discord)
-

@@ -10,13 +10,12 @@ export function can(
 ): boolean {
   // Check if user has the permission
   const hasPermission = permissions.includes(permission)
-  
+
   // If module specified, also check if user has access to that module
   if (module && allowedModules) {
     const hasModuleAccess = allowedModules.includes(module)
     return hasPermission && hasModuleAccess
   }
-  
+
   return hasPermission
 }
-

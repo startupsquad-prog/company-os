@@ -1,21 +1,22 @@
-"use client"
+'use client'
 
-import { ColumnDef } from "@tanstack/react-table"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
-import { TaskRowActions } from "./task-row-actions"
+import { ColumnDef } from '@tanstack/react-table'
+import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header'
+import { TaskRowActions } from './task-row-actions'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { getDiceBearAvatar } from '@/lib/utils'
+import { format, isPast } from 'date-fns'
+import type { TaskFull } from '@/lib/types/tasks'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { format, isPast } from "date-fns"
-import type { TaskFull } from "@/lib/types/tasks"
-import { calculateUrgencyTag, getUrgencyTagConfig, formatDueDateRelative, formatCreatedRelative } from "@/lib/utils/task-utils"
+  calculateUrgencyTag,
+  getUrgencyTagConfig,
+  formatDueDateRelative,
+  formatCreatedRelative,
+} from '@/lib/utils/task-utils'
 
 export const createTaskColumns = (
   onView?: (task: TaskFull) => void,
@@ -24,7 +25,7 @@ export const createTaskColumns = (
   onAssign?: (task: TaskFull) => void
 ): ColumnDef<TaskFull>[] => [
   {
-    id: "select",
+    id: 'select',
     header: ({ table }) => (
       <Checkbox
         checked={table.getIsAllPageRowsSelected()}
@@ -43,10 +44,8 @@ export const createTaskColumns = (
     enableHiding: false,
   },
   {
-    accessorKey: "title",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Title" />
-    ),
+    accessorKey: 'title',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Title" />,
     cell: ({ row }) => {
       const task = row.original
       return (
@@ -61,28 +60,25 @@ export const createTaskColumns = (
     },
   },
   {
-    accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
-    ),
+    accessorKey: 'status',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
     cell: ({ row }) => {
-      const status = row.getValue("status") as string | null
+      const status = row.getValue('status') as string | null
       if (!status) return null
-      
-      const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-        pending: { label: "Pending", variant: "outline" },
-        in_progress: { label: "In Progress", variant: "default" },
-        completed: { label: "Completed", variant: "secondary" },
-        cancelled: { label: "Cancelled", variant: "destructive" },
+
+      const statusConfig: Record<
+        string,
+        { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }
+      > = {
+        pending: { label: 'Pending', variant: 'outline' },
+        in_progress: { label: 'In Progress', variant: 'default' },
+        completed: { label: 'Completed', variant: 'secondary' },
+        cancelled: { label: 'Cancelled', variant: 'destructive' },
       }
-      
-      const config = statusConfig[status] || { label: status, variant: "outline" as const }
-      
-      return (
-        <Badge variant={config.variant}>
-          {config.label}
-        </Badge>
-      )
+
+      const config = statusConfig[status] || { label: status, variant: 'outline' as const }
+
+      return <Badge variant={config.variant}>{config.label}</Badge>
     },
     filterFn: (row, id, value) => {
       const status = row.getValue(id) as string | null
@@ -90,23 +86,21 @@ export const createTaskColumns = (
     },
   },
   {
-    accessorKey: "priority",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Priority" />
-    ),
+    accessorKey: 'priority',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Priority" />,
     cell: ({ row }) => {
-      const priority = row.getValue("priority") as string | null
+      const priority = row.getValue('priority') as string | null
       if (!priority) return null
-      
+
       const priorityConfig: Record<string, { label: string; className: string }> = {
-        low: { label: "Low", className: "bg-gray-100 text-gray-800 border-gray-200" },
-        medium: { label: "Medium", className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-        high: { label: "High", className: "bg-orange-100 text-orange-800 border-orange-200" },
-        urgent: { label: "Urgent", className: "bg-red-100 text-red-800 border-red-200" },
+        low: { label: 'Low', className: 'bg-gray-100 text-gray-800 border-gray-200' },
+        medium: { label: 'Medium', className: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+        high: { label: 'High', className: 'bg-orange-100 text-orange-800 border-orange-200' },
+        urgent: { label: 'Urgent', className: 'bg-red-100 text-red-800 border-red-200' },
       }
-      
-      const config = priorityConfig[priority] || { label: priority, className: "" }
-      
+
+      const config = priorityConfig[priority] || { label: priority, className: '' }
+
       return (
         <Badge variant="outline" className={config.className}>
           {config.label}
@@ -119,10 +113,8 @@ export const createTaskColumns = (
     },
   },
   {
-    id: "urgency_tag",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Urgency" />
-    ),
+    id: 'urgency_tag',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Urgency" />,
     accessorFn: (row) => {
       const tag = row.urgency_tag || calculateUrgencyTag(row)
       return tag || ''
@@ -131,9 +123,9 @@ export const createTaskColumns = (
       const task = row.original
       const tag = task.urgency_tag || calculateUrgencyTag(task)
       const config = getUrgencyTagConfig(tag)
-      
+
       if (!config) return null
-      
+
       return (
         <Badge variant="outline" className={config.className}>
           {config.label}
@@ -147,33 +139,35 @@ export const createTaskColumns = (
     },
   },
   {
-    id: "assignees",
-    header: "Assignees",
+    id: 'assignees',
+    header: 'Assignees',
     cell: ({ row }) => {
       const assignees = row.original.assignees || []
       const visibleAssignees = assignees.slice(0, 3)
       const remaining = assignees.length - visibleAssignees.length
-      
+
       if (assignees.length === 0) {
         return <span className="text-sm text-muted-foreground">Unassigned</span>
       }
-      
+
       const getDiceBearAvatar = (seed: string) => {
         return `https://api.dicebear.com/7.x/micah/svg?seed=${encodeURIComponent(seed)}`
       }
-      
+
       return (
         <TooltipProvider>
           <div className="flex items-center -space-x-2">
             {visibleAssignees.map((assignee) => {
               const profile = assignee.profile
-              const name = profile?.first_name && profile?.last_name
-                ? `${profile.first_name} ${profile.last_name}`
-                : profile?.email || 'Unknown'
-              const initials = profile?.first_name && profile?.last_name
-                ? `${profile.first_name[0]}${profile.last_name[0]}`
-                : profile?.email?.[0]?.toUpperCase() || '?'
-              
+              const name =
+                profile?.first_name && profile?.last_name
+                  ? `${profile.first_name} ${profile.last_name}`
+                  : profile?.email || 'Unknown'
+              const initials =
+                profile?.first_name && profile?.last_name
+                  ? `${profile.first_name[0]}${profile.last_name[0]}`
+                  : profile?.email?.[0]?.toUpperCase() || '?'
+
               const seed = profile?.email || assignee.profile_id || 'unknown'
               return (
                 <Tooltip key={assignee.id}>
@@ -185,7 +179,9 @@ export const createTaskColumns = (
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>{name}</p>
-                    {profile?.email && <p className="text-xs text-muted-foreground">{profile.email}</p>}
+                    {profile?.email && (
+                      <p className="text-xs text-muted-foreground">{profile.email}</p>
+                    )}
                   </TooltipContent>
                 </Tooltip>
               )
@@ -198,7 +194,9 @@ export const createTaskColumns = (
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{remaining} more assignee{remaining > 1 ? 's' : ''}</p>
+                  <p>
+                    {remaining} more assignee{remaining > 1 ? 's' : ''}
+                  </p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -208,11 +206,9 @@ export const createTaskColumns = (
     },
   },
   {
-    id: "department",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Department" />
-    ),
-    accessorFn: (row) => row.department?.name || "",
+    id: 'department',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Department" />,
+    accessorFn: (row) => row.department?.name || '',
     cell: ({ row }) => {
       const department = row.original.department
       return department ? (
@@ -229,22 +225,20 @@ export const createTaskColumns = (
     },
   },
   {
-    accessorKey: "due_date",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Due Date" />
-    ),
+    accessorKey: 'due_date',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Due Date" />,
     cell: ({ row }) => {
-      const dueDate = row.getValue("due_date") as string | null
+      const dueDate = row.getValue('due_date') as string | null
       if (!dueDate) return <span className="text-sm text-muted-foreground">—</span>
-      
+
       const date = new Date(dueDate)
       const isOverdue = isPast(date) && row.original.status !== 'completed'
       const relative = formatDueDateRelative(dueDate)
-      
+
       return (
         <div className="flex flex-col gap-0.5">
           <span className={`text-sm ${isOverdue ? 'text-destructive font-medium' : ''}`}>
-            {format(date, "MMM dd, yyyy")}
+            {format(date, 'MMM dd, yyyy')}
           </span>
           {relative && (
             <span className={`text-xs ${isOverdue ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -256,13 +250,11 @@ export const createTaskColumns = (
     },
   },
   {
-    id: "created_by_profile",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created" />
-    ),
+    id: 'created_by_profile',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Created" />,
     accessorFn: (row) => {
       const creator = row.created_by_profile
-      if (!creator) return ""
+      if (!creator) return ''
       return creator.first_name && creator.last_name
         ? `${creator.first_name} ${creator.last_name}`
         : creator.email || 'Unknown'
@@ -271,44 +263,42 @@ export const createTaskColumns = (
       const creator = row.original.created_by_profile
       const createdAt = row.original.created_at
       const relative = createdAt ? formatCreatedRelative(createdAt) : null
-      
+
       if (!creator) {
         return (
           <div className="flex flex-col gap-0.5">
             <span className="text-sm text-muted-foreground">—</span>
-            {relative && (
-              <span className="text-xs text-muted-foreground">{relative}</span>
-            )}
+            {relative && <span className="text-xs text-muted-foreground">{relative}</span>}
           </div>
         )
       }
-      
-      const name = creator.first_name && creator.last_name
-        ? `${creator.first_name} ${creator.last_name}`
-        : creator.email || 'Unknown'
-      const initials = creator.first_name && creator.last_name
-        ? `${creator.first_name[0]}${creator.last_name[0]}`
-        : creator.email?.[0]?.toUpperCase() || '?'
-      
+
+      const name =
+        creator.first_name && creator.last_name
+          ? `${creator.first_name} ${creator.last_name}`
+          : creator.email || 'Unknown'
+      const initials =
+        creator.first_name && creator.last_name
+          ? `${creator.first_name[0]}${creator.last_name[0]}`
+          : creator.email?.[0]?.toUpperCase() || '?'
+
       return (
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
-              <AvatarImage src={creator.avatar_url || undefined} alt={name} />
+              <AvatarImage src={getDiceBearAvatar(creator.email || creator.id || 'default')} alt={name} />
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
             </Avatar>
             <span className="text-sm">{name}</span>
           </div>
-          {relative && (
-            <span className="text-xs text-muted-foreground ml-8">{relative}</span>
-          )}
+          {relative && <span className="text-xs text-muted-foreground ml-8">{relative}</span>}
         </div>
       )
     },
   },
   {
-    id: "actions",
-    header: "Actions",
+    id: 'actions',
+    header: 'Actions',
     cell: ({ row }) => (
       <TaskRowActions
         row={row}
@@ -321,4 +311,3 @@ export const createTaskColumns = (
     enableHiding: false,
   },
 ]
-

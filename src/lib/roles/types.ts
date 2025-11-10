@@ -13,4 +13,3 @@ export type RoleContextValue = {
   can: (permission: string, module?: string) => boolean
   loading: boolean
 }
-

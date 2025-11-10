@@ -20,7 +20,14 @@ export type NotificationType =
   | 'system'
   | 'mention'
 
-export type EntityType = 'task' | 'lead' | 'order' | 'quotation' | 'shipment' | 'application' | 'interview'
+export type EntityType =
+  | 'task'
+  | 'lead'
+  | 'order'
+  | 'quotation'
+  | 'shipment'
+  | 'application'
+  | 'interview'
 
 export interface NotificationMetadata {
   actor_id?: string

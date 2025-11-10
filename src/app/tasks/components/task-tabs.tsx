@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TaskKanban } from "./task-kanban"
-import { DataTable } from "@/components/data-table/data-table"
-import type { TaskFull } from "@/lib/types/tasks"
-import type { ColumnDef, SortingState, ColumnFiltersState } from "@tanstack/react-table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TaskKanban } from './task-kanban'
+import { DataTable } from '@/components/data-table/data-table'
+import type { TaskFull } from '@/lib/types/tasks'
+import type { ColumnDef, SortingState, ColumnFiltersState } from '@tanstack/react-table'
 
 interface TaskTabsProps {
   role: 'employee' | 'manager' | 'admin' | 'superadmin'
@@ -59,7 +59,7 @@ export function TaskTabs({
 }: TaskTabsProps) {
   return (
     <Tabs defaultValue={defaultView} className="w-full">
-      <TabsList>
+      <TabsList className="w-fit">
         <TabsTrigger value="kanban">Kanban</TabsTrigger>
         <TabsTrigger value="table">Table</TabsTrigger>
       </TabsList>
@@ -101,4 +101,3 @@ export function TaskTabs({
     </Tabs>
   )
 }
-

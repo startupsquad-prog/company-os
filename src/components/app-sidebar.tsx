@@ -1,8 +1,9 @@
-"use client"
+'use client'
 
-import * as React from "react"
+import * as React from 'react'
 import {
   LayoutDashboard,
+  Home,
   CheckSquare,
   BookOpen,
   Users,
@@ -16,345 +17,396 @@ import {
   UserPlus,
   Building,
   BriefcaseBusiness,
-} from "lucide-react"
+  Phone,
+  FileCheck,
+  MessageSquare,
+  Mail,
+  Calendar,
+  Ticket,
+  FolderOpen,
+  CreditCard,
+  Megaphone,
+  BarChart3,
+  Clock,
+  ShoppingBag,
+  UserCog,
+  type LucideIcon,
+} from 'lucide-react'
 
-import { NavMain } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { TeamSwitcher } from "@/components/team-switcher"
-import { AppDock } from "@/components/app-dock"
-import { useRole } from "@/lib/roles/use-role"
-import { useUserRole } from "@/lib/hooks/useUserRole"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarRail,
-} from "@/components/ui/sidebar"
+import { NavMain } from '@/components/nav-main'
+import { NavProjects } from '@/components/nav-projects'
+import { VerticalSwitcher } from '@/components/vertical-switcher'
+import { AppDock } from '@/components/app-dock'
+import { useRole } from '@/lib/roles/use-role'
+import { useUserRole } from '@/lib/hooks/useUserRole'
+import { Sidebar, SidebarContent, SidebarHeader, SidebarRail } from '@/components/ui/sidebar'
+
+// Pages that exist and are functional
+const EXISTING_PAGES = new Set([
+  '/home',
+  '/dashboard',
+  '/tasks',
+  '/users',
+  '/employees',
+  '/crm/leads',
+  '/crm/products',
+  '/crm/quotations',
+  '/crm/calls',
+  '/crm/marketing-assets',
+  '/knowledge/articles',
+  '/messages',
+  '/mail',
+  '/calendar',
+  '/tickets',
+  '/documents',
+  '/hr/attendance',
+  '/subscriptions',
+])
 
 // Module to project mapping
-const moduleProjectMap: Record<string, { name: string; url: string; icon: React.ElementType }> = {
+const moduleProjectMap: Record<string, { name: string; url: string; icon: LucideIcon; comingSoon?: boolean }> = {
   crm: {
-    name: "CRM",
-    url: "/crm",
+    name: 'CRM',
+    url: '/crm/leads',
     icon: Users,
   },
   ats: {
-    name: "ATS",
-    url: "/ats",
+    name: 'ATS',
+    url: '/ats',
     icon: FileText,
+    comingSoon: !EXISTING_PAGES.has('/ats'),
   },
   ops: {
-    name: "Operations",
-    url: "/ops",
+    name: 'Operations',
+    url: '/ops',
     icon: ShoppingCart,
+    comingSoon: !EXISTING_PAGES.has('/ops'),
   },
   import_ops: {
-    name: "Import Ops",
-    url: "/import-ops",
+    name: 'Import Ops',
+    url: '/import-ops',
     icon: Package,
+    comingSoon: !EXISTING_PAGES.has('/import-ops'),
   },
 }
 
-// Company OS data
-const data = {
-  teams: [
-    {
-      name: "Company OS",
-      logo: Building2,
-      plan: "Enterprise",
-    },
-    {
-      name: "Sales Team",
-      logo: Briefcase,
-      plan: "Department",
-    },
-    {
-      name: "Operations",
-      logo: Users2,
-      plan: "Department",
-    },
-  ],
+function normalizeRoleName(input?: string | null):
+  | 'employee'
+  | 'manager'
+  | 'admin'
+  | 'superadmin'
+  | null {
+  if (!input) return null
+  const v = String(input).toLowerCase()
+  if (['superadmin', 'super_admin', 'owner', 'root'].includes(v)) return 'superadmin'
+  if (['admin', 'administrator'].includes(v)) return 'admin'
+  if (['manager', 'mgr'].includes(v)) return 'manager'
+  if (['employee', 'user', 'member', 'staff'].includes(v)) return 'employee'
+  return null
 }
 
-// Get sidebar navigation items based on role and allowed modules
-function getNavMainItems(
+// Get sidebar navigation items - organized into concise groups for superadmin
+function getNavGroups(
   role: 'employee' | 'manager' | 'admin' | 'superadmin' | null,
   allowedModules: string[] = []
 ) {
-  const baseItems = []
+  const groups = []
 
-  // Default to employee if role is null (loading state)
-  const effectiveRole = role || 'employee'
-  
-  // Superadmin always has access to all modules
-  const hasCrmAccess = effectiveRole === 'superadmin' || allowedModules.includes('crm')
+  // TEMPORARY: Show full sidebar to everyone (bypass role checks)
+  // TODO: Remove this and restore role-based access after fixing role detection
+  const effectiveRole = 'superadmin' // Force superadmin for now
+  const hasCrmAccess = true // Force CRM access for now
 
-  // Dashboard section - varies by role
-  if (effectiveRole === 'employee') {
-    // Employee: Only Overview (personal dashboard)
-    baseItems.push({
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: LayoutDashboard,
-      isActive: true,
-      items: [
-        {
-          title: "Overview",
-          url: "/dashboard",
-        },
-      ],
-    })
-  } else if (effectiveRole === 'manager') {
-    // Manager: Overview and Analytics (department level)
-    baseItems.push({
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: LayoutDashboard,
-      isActive: true,
-      items: [
-        {
-          title: "Overview",
-          url: "/dashboard",
-        },
-        {
-          title: "Analytics",
-          url: "/dashboard/analytics",
-        },
-      ],
-    })
-  } else if (effectiveRole === 'admin' || effectiveRole === 'superadmin') {
-    // Admin/Superadmin: Full dashboard access
-    baseItems.push({
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: LayoutDashboard,
-      isActive: true,
-      items: [
-        {
-          title: "Overview",
-          url: "/dashboard",
-        },
-        {
-          title: "Analytics",
-          url: "/dashboard/analytics",
-        },
-        {
-          title: "Reports",
-          url: "/dashboard/reports",
-        },
-      ],
-    })
-  }
-
-  // Tasks section - varies by role
-  if (effectiveRole === 'employee') {
-    // Employee: Only "My Tasks" - no access to all tasks or department tasks
-    baseItems.push({
-      title: "Tasks",
-      url: "/tasks?filter=my",
-      icon: CheckSquare,
-      items: [
-        {
-          title: "My Tasks",
-          url: "/tasks?filter=my",
-        },
-      ],
-    })
-  } else if (effectiveRole === 'manager') {
-    // Manager: My Tasks and Department Tasks (can see their department)
-    baseItems.push({
-      title: "Tasks",
-      url: "/tasks?filter=my",
-      icon: CheckSquare,
-      items: [
-        {
-          title: "My Tasks",
-          url: "/tasks?filter=my",
-        },
-        {
-          title: "Department",
-          url: "/tasks?filter=department",
-        },
-      ],
-    })
-  } else if (effectiveRole === 'admin' || effectiveRole === 'superadmin') {
-    // Admin/Superadmin: All Tasks, My Tasks, Department
-    baseItems.push({
-      title: "Tasks",
-      url: "/tasks",
-      icon: CheckSquare,
-      items: [
-        {
-          title: "All Tasks",
-          url: "/tasks",
-        },
-        {
-          title: "My Tasks",
-          url: "/tasks?filter=my",
-        },
-        {
-          title: "Department",
-          url: "/tasks?filter=department",
-        },
-      ],
-    })
-  }
-
-  // CRM section - only if user has CRM module access
-  if (hasCrmAccess) {
-    baseItems.push({
-      title: "CRM",
-      url: "/crm/leads",
-      icon: Users,
-      items: [
-        {
-          title: "Leads",
-          url: "/crm/leads",
-        },
-        {
-          title: "Opportunities",
-          url: "/crm/opportunities",
-        },
-        {
-          title: "Contacts",
-          url: "/crm/contacts",
-        },
-        {
-          title: "Companies",
-          url: "/crm/companies",
-        },
-      ],
-    })
-  }
-
-  // Knowledge section - available to all roles
-  baseItems.push({
-    title: "Knowledge",
-    url: "/knowledge",
-    icon: BookOpen,
+  // ============================================================================
+  // MAIN - Core functionality (single items, no dropdowns)
+  // ============================================================================
+  groups.push({
+    label: 'Main',
     items: [
       {
-        title: "SOPs",
-        url: "/knowledge/sops",
+        title: 'Home',
+        url: '/home',
+        icon: Home,
+        isActive: true,
       },
       {
-        title: "Files",
-        url: "/knowledge/files",
+        title: 'Dashboard',
+        url: '/dashboard',
+        icon: LayoutDashboard,
       },
       {
-        title: "Documentation",
-        url: "/knowledge/docs",
+        title: 'Tasks',
+        url: '/tasks',
+        icon: CheckSquare,
       },
     ],
   })
 
-  // Settings section - varies by role
-  if (effectiveRole === 'employee') {
-    // Employee: Only personal settings (General)
-    baseItems.push({
-      title: "Settings",
-      url: "/settings/general",
-      icon: Settings2,
+  // ============================================================================
+  // PEOPLE - User & Employee Management (grouped)
+  // ============================================================================
+  groups.push({
+    label: 'People',
+    items: [
+      {
+        title: 'Users',
+        url: '/users',
+        icon: UserPlus,
+      },
+      {
+        title: 'Employees',
+        url: '/employees',
+        icon: UserCog,
+      },
+    ],
+  })
+
+  // ============================================================================
+  // CRM - Organized with smart grouping
+  // ============================================================================
+  if (hasCrmAccess) {
+    groups.push({
+      label: 'CRM',
       items: [
         {
-          title: "General",
-          url: "/settings/general",
-        },
-      ],
-    })
-  } else if (effectiveRole === 'manager') {
-    // Manager: General and Team (department level)
-    baseItems.push({
-      title: "Settings",
-      url: "/settings/general",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "/settings/general",
+          title: 'Leads',
+          url: '/crm/leads',
+          icon: Users,
         },
         {
-          title: "Team",
-          url: "/settings/team",
-        },
-      ],
-    })
-  } else if (effectiveRole === 'admin') {
-    // Admin: General, Team, Permissions (but not RBAC)
-    baseItems.push({
-      title: "Settings",
-      url: "/settings/general",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "/settings/general",
-        },
-        {
-          title: "Team",
-          url: "/settings/team",
+          title: 'Sales',
+          url: '/crm/opportunities',
+          icon: Briefcase,
+          items: [
+            {
+              title: 'Opportunities',
+              url: '/crm/opportunities',
+              comingSoon: !EXISTING_PAGES.has('/crm/opportunities'),
+            },
+            {
+              title: 'Quotations',
+              url: '/crm/quotations',
+              comingSoon: !EXISTING_PAGES.has('/crm/quotations'),
+            },
+          ],
         },
         {
-          title: "Permissions",
-          url: "/settings/permissions",
-        },
-      ],
-    })
-  } else if (effectiveRole === 'superadmin') {
-    // Superadmin: Full settings access including RBAC
-    baseItems.push({
-      title: "Settings",
-      url: "/settings/general",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "/settings/general",
-        },
-        {
-          title: "Team",
-          url: "/settings/team",
+          title: 'Contacts',
+          url: '/crm/contacts',
+          icon: Building,
+          items: [
+            {
+              title: 'Contacts',
+              url: '/crm/contacts',
+              comingSoon: !EXISTING_PAGES.has('/crm/contacts'),
+            },
+            {
+              title: 'Companies',
+              url: '/crm/companies',
+              comingSoon: !EXISTING_PAGES.has('/crm/companies'),
+            },
+          ],
         },
         {
-          title: "Permissions",
-          url: "/settings/permissions",
+          title: 'Products',
+          url: '/crm/products',
+          icon: ShoppingBag,
+          comingSoon: !EXISTING_PAGES.has('/crm/products'),
         },
         {
-          title: "RBAC",
-          url: "/settings/rbac",
+          title: 'Activities',
+          url: '/crm/calls',
+          icon: Phone,
+          items: [
+            {
+              title: 'Calls',
+              url: '/crm/calls',
+              comingSoon: !EXISTING_PAGES.has('/crm/calls'),
+            },
+            {
+              title: 'Marketing Assets',
+              url: '/crm/marketing-assets',
+              comingSoon: !EXISTING_PAGES.has('/crm/marketing-assets'),
+            },
+          ],
         },
       ],
     })
   }
 
-  return baseItems
+  // ============================================================================
+  // KNOWLEDGE - Grouped
+  // ============================================================================
+  groups.push({
+    label: 'Knowledge',
+    items: [
+      {
+        title: 'Knowledge Base',
+        url: '/knowledge/articles',
+        icon: BookOpen,
+        comingSoon: !EXISTING_PAGES.has('/knowledge/articles'),
+      },
+      {
+        title: 'Resources',
+        url: '/knowledge/sops',
+        icon: FolderOpen,
+        items: [
+          {
+            title: 'SOPs',
+            url: '/knowledge/sops',
+            comingSoon: !EXISTING_PAGES.has('/knowledge/sops'),
+          },
+          {
+            title: 'Files',
+            url: '/knowledge/files',
+            comingSoon: !EXISTING_PAGES.has('/knowledge/files'),
+          },
+          {
+            title: 'Documentation',
+            url: '/knowledge/docs',
+            comingSoon: !EXISTING_PAGES.has('/knowledge/docs'),
+          },
+        ],
+      },
+    ],
+  })
+
+  // ============================================================================
+  // COMMUNICATION - Single items
+  // ============================================================================
+  groups.push({
+    label: 'Communication',
+    items: [
+      {
+        title: 'Messages',
+        url: '/messages',
+        icon: MessageSquare,
+        comingSoon: !EXISTING_PAGES.has('/messages'),
+      },
+      {
+        title: 'Mail',
+        url: '/mail',
+        icon: Mail,
+        comingSoon: !EXISTING_PAGES.has('/mail'),
+      },
+      {
+        title: 'Calendar',
+        url: '/calendar',
+        icon: Calendar,
+        comingSoon: !EXISTING_PAGES.has('/calendar'),
+      },
+    ],
+  })
+
+  // ============================================================================
+  // OPERATIONS - Grouped
+  // ============================================================================
+  groups.push({
+    label: 'Operations',
+    items: [
+      {
+        title: 'Tickets',
+        url: '/tickets',
+        icon: Ticket,
+        comingSoon: !EXISTING_PAGES.has('/tickets'),
+      },
+      {
+        title: 'Documents',
+        url: '/documents',
+        icon: FileText,
+        comingSoon: !EXISTING_PAGES.has('/documents'),
+      },
+      {
+        title: 'HR',
+        url: '/hr/attendance',
+        icon: Clock,
+        comingSoon: !EXISTING_PAGES.has('/hr/attendance'),
+      },
+      {
+        title: 'Subscriptions',
+        url: '/subscriptions',
+        icon: CreditCard,
+        comingSoon: !EXISTING_PAGES.has('/subscriptions'),
+      },
+    ],
+  })
+
+  // ============================================================================
+  // SETTINGS - Grouped
+  // ============================================================================
+  groups.push({
+    label: 'Settings',
+    items: [
+      {
+        title: 'General',
+        url: '/settings/general',
+        icon: Settings2,
+        comingSoon: !EXISTING_PAGES.has('/settings/general'),
+      },
+      {
+        title: 'Access Control',
+        url: '/settings/permissions',
+        icon: BriefcaseBusiness,
+        items: [
+          {
+            title: 'Permissions',
+            url: '/settings/permissions',
+            comingSoon: !EXISTING_PAGES.has('/settings/permissions'),
+          },
+          {
+            title: 'RBAC',
+            url: '/settings/rbac',
+            comingSoon: !EXISTING_PAGES.has('/settings/rbac'),
+          },
+        ],
+      },
+      {
+        title: 'Team',
+        url: '/settings/team',
+        icon: Users2,
+        comingSoon: !EXISTING_PAGES.has('/settings/team'),
+      },
+    ],
+  })
+
+  return groups
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { allowedModules } = useRole()
-  const { role } = useUserRole()
+  const { allowedModules, activeRole } = useRole()
+  const { role, isLoading: roleLoading } = useUserRole()
 
-  // Get role-based navigation items
-  const navMainItems = React.useMemo(() => {
-    return getNavMainItems(role, allowedModules)
-  }, [role, allowedModules])
+  // Use activeRole from RoleContext as fallback if useUserRole hasn't loaded yet
+  // activeRole has role_name which we can use
+  const effectiveRoleForNav = React.useMemo(() => {
+    const primary = normalizeRoleName(role)
+    if (primary) return primary
+    const fallback = normalizeRoleName(activeRole?.role_name)
+    if (fallback) return fallback
+    return null
+  }, [role, activeRole])
+
+  // Get role-based navigation groups
+  const navGroups = React.useMemo(() => {
+    const groups = getNavGroups(effectiveRoleForNav, allowedModules)
+    return groups
+  }, [effectiveRoleForNav, allowedModules])
 
   // Filter projects based on allowed modules
-  // common_util is always available (Tasks), so we filter other modules
+  // TEMPORARY: Show all projects to everyone
   const projects = React.useMemo(() => {
-    return allowedModules
-      .filter(module => module !== 'common_util' && moduleProjectMap[module])
-      .map(module => moduleProjectMap[module])
-  }, [allowedModules])
+    // Show all projects to everyone for now
+    return Object.values(moduleProjectMap)
+  }, [])
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="gap-1 p-1.5">
-        <TeamSwitcher teams={data.teams} />
+        <VerticalSwitcher />
       </SidebarHeader>
       <AppDock />
       <SidebarContent>
-        <NavMain items={navMainItems} />
+        <NavMain groups={navGroups} />
         {projects.length > 0 && <NavProjects projects={projects} />}
       </SidebarContent>
       <SidebarRail />

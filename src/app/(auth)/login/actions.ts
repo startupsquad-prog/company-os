@@ -11,14 +11,11 @@ export type SignInResult = {
 /**
  * Server action to sign in with email and password
  */
-export async function signInWithPassword(
-  email: string,
-  password: string
-): Promise<SignInResult> {
+export async function signInWithPassword(email: string, password: string): Promise<SignInResult> {
   try {
     // Use server client for auth (handles cookies properly)
     const supabase = await createServerClient()
-    
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -51,7 +48,7 @@ export async function signInWithPassword(
 
     // Revalidate to refresh session
     revalidatePath('/dashboard')
-    
+
     return {
       success: true,
     }
@@ -63,4 +60,3 @@ export async function signInWithPassword(
     }
   }
 }
-

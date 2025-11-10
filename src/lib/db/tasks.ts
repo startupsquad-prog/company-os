@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { getClerkUserId } from '@/lib/auth/clerk'
 import type {
   Task,
   TaskInsert,
@@ -22,14 +23,12 @@ export interface TaskFilter {
 }
 
 /**
- * Get current user's profile ID
+ * Get current user's profile ID using Clerk user ID
  */
 async function getCurrentProfileId(supabase: Awaited<ReturnType<typeof createServerClient>>) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const userId = await getClerkUserId()
 
-  if (!user) {
+  if (!userId) {
     throw new Error('Unauthorized')
   }
 
@@ -37,7 +36,7 @@ async function getCurrentProfileId(supabase: Awaited<ReturnType<typeof createSer
   const { data: profile } = await supabase
     .from('profiles')
     .select('id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .single()
 
   if (!profile) {
@@ -71,12 +70,14 @@ export async function getTasks(filter: TaskFilter = {}) {
   const supabase = await createServerClient()
   let query = supabase
     .from('tasks')
-    .select(`
+    .select(
+      `
       *,
       department:departments!tasks_department_id_fkey(*),
       created_by_profile:profiles!tasks_created_by_fkey(*),
       updated_by_profile:profiles!tasks_updated_by_fkey(*)
-    `)
+    `
+    )
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
@@ -129,10 +130,12 @@ export async function getTasks(filter: TaskFilter = {}) {
       // Get assignees
       const { data: assignees } = await supabase
         .from('task_assignees')
-        .select(`
+        .select(
+          `
           *,
           profile:profiles!task_assignees_profile_id_fkey(*)
-        `)
+        `
+        )
         .eq('task_id', task.id)
 
       // Get latest status
@@ -166,12 +169,14 @@ export async function getTaskById(id: string): Promise<TaskWithRelations | null>
 
   const { data: task, error } = await supabase
     .from('tasks')
-    .select(`
+    .select(
+      `
       *,
       department:departments!tasks_department_id_fkey(*),
       created_by_profile:profiles!tasks_created_by_fkey(*),
       updated_by_profile:profiles!tasks_updated_by_fkey(*)
-    `)
+    `
+    )
     .eq('id', id)
     .is('deleted_at', null)
     .single()
@@ -190,10 +195,12 @@ export async function getTaskById(id: string): Promise<TaskWithRelations | null>
   // Get assignees
   const { data: assignees } = await supabase
     .from('task_assignees')
-    .select(`
+    .select(
+      `
       *,
       profile:profiles!task_assignees_profile_id_fkey(*)
-    `)
+    `
+    )
     .eq('task_id', id)
 
   // Get latest status
@@ -228,11 +235,7 @@ export async function createTask(data: Omit<TaskInsert, 'id' | 'created_at' | 'u
     updated_by: profileId,
   }
 
-  const { data: task, error } = await supabase
-    .from('tasks')
-    .insert(taskData)
-    .select()
-    .single()
+  const { data: task, error } = await supabase.from('tasks').insert(taskData).select().single()
 
   if (error) {
     throw new Error(`Failed to create task: ${error.message}`)
@@ -247,7 +250,9 @@ export async function createTask(data: Omit<TaskInsert, 'id' | 'created_at' | 'u
   })
 
   // Trigger notification for task creation (will notify assignees if any)
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (user) {
     const { triggerNotification } = await import('@/lib/notifications/trigger-notification')
     // Notification will be created for assignees when they're added
@@ -293,7 +298,9 @@ export async function updateTask(id: string, data: TaskUpdate) {
 
   // Trigger notification for status change
   if (data.status) {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (user) {
       const { triggerNotification } = await import('@/lib/notifications/trigger-notification')
       triggerNotification('task', id, 'status_changed', 'task_status_changed', {
@@ -339,7 +346,9 @@ export async function addComment(taskId: string, body: string) {
   })
 
   // Trigger notification for task assignees
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (user) {
     const { triggerNotification } = await import('@/lib/notifications/trigger-notification')
     triggerNotification('task', taskId, 'commented', 'task_commented', {
@@ -406,7 +415,9 @@ export async function assignUser(
 
   // Trigger notification for assigned user
   if (assigneeProfile?.user_id) {
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
     if (user) {
       const { triggerNotification } = await import('@/lib/notifications/trigger-notification')
       triggerNotification('task', taskId, 'assigned', 'task_assigned', {
@@ -444,7 +455,7 @@ export async function getOverdueTasksCount(assignedTo?: string): Promise<number>
     }
 
     const assignedTaskIds = assignedTasks.map((a) => a.task_id)
-    
+
     const { count, error } = await supabase
       .from('tasks')
       .select('id', { count: 'exact', head: true })
@@ -487,12 +498,14 @@ export async function getOverdueTasks(assignedTo?: string): Promise<TaskWithRela
 
   let query = supabase
     .from('tasks')
-    .select(`
+    .select(
+      `
       *,
       department:departments!tasks_department_id_fkey(*),
       created_by_profile:profiles!tasks_created_by_fkey(*),
       updated_by_profile:profiles!tasks_updated_by_fkey(*)
-    `)
+    `
+    )
     .is('deleted_at', null)
     .not('due_date', 'is', null)
     .lt('due_date', now)
@@ -524,10 +537,12 @@ export async function getOverdueTasks(assignedTo?: string): Promise<TaskWithRela
     filteredTasks.map(async (task) => {
       const { data: assignees } = await supabase
         .from('task_assignees')
-        .select(`
+        .select(
+          `
           *,
           profile:profiles!task_assignees_profile_id_fkey(*)
-        `)
+        `
+        )
         .eq('task_id', task.id)
 
       return {
@@ -543,4 +558,3 @@ export async function getOverdueTasks(assignedTo?: string): Promise<TaskWithRela
 
   return tasksWithRelations
 }
-

@@ -1,45 +1,47 @@
-"use client"
+'use client'
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Download, FileText, FileDown } from "lucide-react"
-import { toast } from "sonner"
+} from '@/components/ui/dropdown-menu'
+import { Download, FileText, FileDown } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface DataTableExportMenuProps {
   data: any[]
   filename?: string
 }
 
-export function DataTableExportMenu({ data, filename = "data" }: DataTableExportMenuProps) {
+export function DataTableExportMenu({ data, filename = 'data' }: DataTableExportMenuProps) {
   const exportToCSV = () => {
     if (!data || data.length === 0) {
-      toast.error("No data to export")
+      toast.error('No data to export')
       return
     }
 
     try {
       // Get headers from the first row
       const headers = Object.keys(data[0])
-      
+
       // Create CSV content
       const csvContent = [
-        headers.join(","),
-        ...data.map(row => 
-          headers.map(header => {
-            const value = row[header]
-            // Escape commas and quotes in CSV
-            if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-              return `"${value.replace(/"/g, '""')}"`
-            }
-            return value
-          }).join(",")
-        )
-      ].join("\n")
+        headers.join(','),
+        ...data.map((row) =>
+          headers
+            .map((header) => {
+              const value = row[header]
+              // Escape commas and quotes in CSV
+              if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                return `"${value.replace(/"/g, '""')}"`
+              }
+              return value
+            })
+            .join(',')
+        ),
+      ].join('\n')
 
       // Create and download file
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -51,17 +53,17 @@ export function DataTableExportMenu({ data, filename = "data" }: DataTableExport
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
-      toast.success("CSV exported successfully!")
+
+      toast.success('CSV exported successfully!')
     } catch (error) {
-      toast.error("Failed to export CSV")
-      console.error("Export error:", error)
+      toast.error('Failed to export CSV')
+      console.error('Export error:', error)
     }
   }
 
   const exportToJSON = () => {
     if (!data || data.length === 0) {
-      toast.error("No data to export")
+      toast.error('No data to export')
       return
     }
 
@@ -76,11 +78,11 @@ export function DataTableExportMenu({ data, filename = "data" }: DataTableExport
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
-      toast.success("JSON exported successfully!")
+
+      toast.success('JSON exported successfully!')
     } catch (error) {
-      toast.error("Failed to export JSON")
-      console.error("Export error:", error)
+      toast.error('Failed to export JSON')
+      console.error('Export error:', error)
     }
   }
 
@@ -105,4 +107,3 @@ export function DataTableExportMenu({ data, filename = "data" }: DataTableExport
     </DropdownMenu>
   )
 }
-

@@ -27,9 +27,11 @@ export function OverdueTasksBadge() {
   const fetchOverdueCount = async () => {
     try {
       const supabase = createClient()
-      
+
       // Get current user's profile ID
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) {
         setCount(0)
         setLoading(false)
@@ -49,10 +51,8 @@ export function OverdueTasksBadge() {
       }
 
       // Fetch overdue count for assigned tasks
-      const response = await fetch(
-        `/api/tasks/overdue?assigned_to_me=true`
-      )
-      
+      const response = await fetch(`/api/tasks/overdue?assigned_to_me=true`)
+
       if (response.ok) {
         const data = await response.json()
         setCount(data.count || 0)
@@ -67,8 +67,10 @@ export function OverdueTasksBadge() {
   const fetchOverdueTasks = async () => {
     try {
       const supabase = createClient()
-      
-      const { data: { user } } = await supabase.auth.getUser()
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (!user) return
 
       const { data: profile } = await supabase
@@ -79,10 +81,8 @@ export function OverdueTasksBadge() {
 
       if (!profile) return
 
-      const response = await fetch(
-        `/api/tasks/overdue?assigned_to_me=true&include_list=true`
-      )
-      
+      const response = await fetch(`/api/tasks/overdue?assigned_to_me=true&include_list=true`)
+
       if (response.ok) {
         const data = await response.json()
         setTasks(data.tasks || [])
@@ -94,10 +94,10 @@ export function OverdueTasksBadge() {
 
   useEffect(() => {
     fetchOverdueCount()
-    
+
     // Refresh count every 30 seconds
     const interval = setInterval(fetchOverdueCount, 30000)
-    
+
     return () => clearInterval(interval)
   }, [])
 
@@ -114,11 +114,7 @@ export function OverdueTasksBadge() {
   return (
     <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-        >
+        <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           <Badge
             variant="destructive"
@@ -154,4 +150,3 @@ export function OverdueTasksBadge() {
     </Sheet>
   )
 }
-

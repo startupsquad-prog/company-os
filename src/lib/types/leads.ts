@@ -1,7 +1,14 @@
 // CRM Leads Types
 // Company OS: Type definitions for CRM leads module
 
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost'
+export type LeadStatus =
+  | 'new'
+  | 'contacted'
+  | 'qualified'
+  | 'proposal'
+  | 'negotiation'
+  | 'won'
+  | 'lost'
 
 export type LeadSource = 'website' | 'referral' | 'cold_call' | 'event' | 'social' | 'other'
 
@@ -183,4 +190,3 @@ export interface UpdateLeadStatusInput {
   status: LeadStatus
   notes?: string | null
 }
-

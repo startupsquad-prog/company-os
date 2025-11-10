@@ -1,16 +1,16 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 import {
   Dialog,
   DialogContent,
@@ -18,17 +18,28 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { DatePicker } from "@/components/ui/date-picker"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { User, Calendar, Flag, Tag, Save, X, Clock, Link2, Plus as PlusIcon, Trash2 } from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
-import type { TaskFormData, TaskFull } from "@/lib/types/tasks"
-import { createClient } from "@/lib/supabase/client"
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import {
+  User,
+  Calendar,
+  Flag,
+  Tag,
+  Save,
+  X,
+  Clock,
+  Link2,
+  Plus as PlusIcon,
+  Trash2,
+} from 'lucide-react'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
+import type { TaskFormData, TaskFull } from '@/lib/types/tasks'
+import { createClient } from '@/lib/supabase/client'
 
 interface TaskFormProps {
   task?: TaskFull | null
@@ -52,19 +63,19 @@ export function TaskForm({
   defaultStatus,
 }: TaskFormProps) {
   const [formData, setFormData] = useState<TaskFormData>({
-    title: "",
-    description: "",
+    title: '',
+    description: '',
     priority: undefined,
     status: undefined,
     department_id: undefined,
-    vertical_key: "",
+    vertical_key: '',
     due_date: undefined,
     estimated_duration: undefined,
     important_links: [],
   })
   const [links, setLinks] = useState<Array<{ url: string; label: string }>>([])
-  const [newLinkUrl, setNewLinkUrl] = useState("")
-  const [newLinkLabel, setNewLinkLabel] = useState("")
+  const [newLinkUrl, setNewLinkUrl] = useState('')
+  const [newLinkLabel, setNewLinkLabel] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [assigneeOpen, setAssigneeOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
@@ -72,15 +83,17 @@ export function TaskForm({
   const [durationOpen, setDurationOpen] = useState(false)
   const [tagOpen, setTagOpen] = useState(false)
   const [linksOpen, setLinksOpen] = useState(false)
-  const [availableProfiles, setAvailableProfiles] = useState<Array<{ id: string; first_name: string | null; last_name: string | null; email: string }>>([])
+  const [availableProfiles, setAvailableProfiles] = useState<
+    Array<{ id: string; first_name: string | null; last_name: string | null; email: string }>
+  >([])
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([])
 
   // Priority icon colors
   const priorityIcons: Record<string, { icon: typeof Flag; color: string }> = {
-    low: { icon: Flag, color: "text-gray-500" },
-    medium: { icon: Flag, color: "text-yellow-500" },
-    high: { icon: Flag, color: "text-orange-500" },
-    urgent: { icon: Flag, color: "text-red-500" },
+    low: { icon: Flag, color: 'text-gray-500' },
+    medium: { icon: Flag, color: 'text-yellow-500' },
+    high: { icon: Flag, color: 'text-orange-500' },
+    urgent: { icon: Flag, color: 'text-red-500' },
   }
 
   // Generate DiceBear Micah avatar URL
@@ -94,19 +107,19 @@ export function TaskForm({
       try {
         const supabase = createClient()
         const { data: profiles } = await supabase
-          .from("profiles")
-          .select("id, first_name, last_name, email")
-          .is("deleted_at", null)
-          .order("first_name")
-        
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .is('deleted_at', null)
+          .order('first_name')
+
         if (profiles) {
           setAvailableProfiles(profiles)
         }
       } catch (error) {
-        console.error("Error fetching profiles:", error)
+        console.error('Error fetching profiles:', error)
       }
     }
-    
+
     if (open) {
       fetchProfiles()
     }
@@ -116,25 +129,25 @@ export function TaskForm({
     if (task) {
       setFormData({
         title: task.title,
-        description: task.description || "",
+        description: task.description || '',
         priority: task.priority || undefined,
         status: task.status || undefined,
         department_id: task.department_id || undefined,
-        vertical_key: task.vertical_key || "",
+        vertical_key: task.vertical_key || '',
         due_date: task.due_date ? new Date(task.due_date) : undefined,
         estimated_duration: (task as any).estimated_duration || undefined,
         important_links: (task as any).important_links || [],
       })
-      setSelectedAssignees(task.assignees?.map(a => a.profile_id) || [])
+      setSelectedAssignees(task.assignees?.map((a) => a.profile_id) || [])
       setLinks(Array.isArray((task as any).important_links) ? (task as any).important_links : [])
     } else {
       setFormData({
-        title: "",
-        description: "",
+        title: '',
+        description: '',
         priority: undefined,
         status: defaultStatus || undefined,
         department_id: undefined,
-        vertical_key: "",
+        vertical_key: '',
         due_date: undefined,
         estimated_duration: undefined,
         important_links: [],
@@ -152,14 +165,14 @@ export function TaskForm({
         ...formData,
         estimated_duration: formData.estimated_duration,
         important_links: links,
-        assignees: selectedAssignees.map(profileId => ({
+        assignees: selectedAssignees.map((profileId) => ({
           profile_id: profileId,
-          role: 'collaborator' as const
-        }))
+          role: 'collaborator' as const,
+        })),
       })
       onOpenChange(false)
     } catch (error) {
-      console.error("Error submitting task:", error)
+      console.error('Error submitting task:', error)
     } finally {
       setIsSubmitting(false)
     }
@@ -169,11 +182,11 @@ export function TaskForm({
     if (newLinkUrl.trim()) {
       const newLink = {
         url: newLinkUrl.trim(),
-        label: newLinkLabel.trim() || newLinkUrl.trim()
+        label: newLinkLabel.trim() || newLinkUrl.trim(),
       }
       setLinks([...links, newLink])
-      setNewLinkUrl("")
-      setNewLinkLabel("")
+      setNewLinkUrl('')
+      setNewLinkLabel('')
     }
   }
 
@@ -182,16 +195,16 @@ export function TaskForm({
   }
 
   const toggleAssignee = (profileId: string) => {
-    setSelectedAssignees(prev => 
-      prev.includes(profileId) 
-        ? prev.filter(id => id !== profileId)
-        : [...prev, profileId]
+    setSelectedAssignees((prev) =>
+      prev.includes(profileId) ? prev.filter((id) => id !== profileId) : [...prev, profileId]
     )
   }
 
-  const selectedPriorityOption = priorityOptions.find(opt => opt.value === formData.priority)
+  const selectedPriorityOption = priorityOptions.find((opt) => opt.value === formData.priority)
   const PriorityIcon = formData.priority ? priorityIcons[formData.priority]?.icon || Flag : Flag
-  const priorityColor = formData.priority ? priorityIcons[formData.priority]?.color || "text-gray-500" : "text-gray-500"
+  const priorityColor = formData.priority
+    ? priorityIcons[formData.priority]?.color || 'text-gray-500'
+    : 'text-gray-500'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -200,17 +213,12 @@ export function TaskForm({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
             <DialogTitle className="text-lg font-semibold">
-              {task ? "Edit Task" : "Create Task"}
+              {task ? 'Edit Task' : 'Create Task'}
             </DialogTitle>
             <div className="flex items-center gap-2">
-              <Button 
-                type="submit" 
-                size="sm" 
-                disabled={isSubmitting}
-                className="gap-2"
-              >
+              <Button type="submit" size="sm" disabled={isSubmitting} className="gap-2">
                 <Save className="h-4 w-4" />
-                {isSubmitting ? "Saving..." : "Save"}
+                {isSubmitting ? 'Saving...' : 'Save'}
               </Button>
             </div>
           </div>
@@ -247,21 +255,31 @@ export function TaskForm({
                           <div className="flex items-center gap-2 flex-1">
                             <div className="flex -space-x-2">
                               {selectedAssignees.slice(0, 3).map((profileId) => {
-                                const profile = availableProfiles.find(p => p.id === profileId)
-                                const name = profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email : 'Unknown'
+                                const profile = availableProfiles.find((p) => p.id === profileId)
+                                const name = profile
+                                  ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
+                                    profile.email
+                                  : 'Unknown'
                                 const seed = profile?.email || profileId
                                 return (
-                                  <Avatar key={profileId} className="h-6 w-6 border-2 border-background">
+                                  <Avatar
+                                    key={profileId}
+                                    className="h-6 w-6 border-2 border-background"
+                                  >
                                     <AvatarImage src={getDiceBearAvatar(seed)} alt={name} />
                                     <AvatarFallback className="text-xs">
-                                      {profile?.first_name?.[0] || profile?.email?.[0]?.toUpperCase() || '?'}
+                                      {profile?.first_name?.[0] ||
+                                        profile?.email?.[0]?.toUpperCase() ||
+                                        '?'}
                                     </AvatarFallback>
                                   </Avatar>
                                 )
                               })}
                             </div>
                             {selectedAssignees.length > 3 && (
-                              <span className="text-sm text-muted-foreground">+{selectedAssignees.length - 3}</span>
+                              <span className="text-sm text-muted-foreground">
+                                +{selectedAssignees.length - 3}
+                              </span>
                             )}
                           </div>
                         ) : (
@@ -269,34 +287,38 @@ export function TaskForm({
                         )}
                       </Button>
                     </PopoverTrigger>
-                <PopoverContent className="w-64 p-2" align="start">
-                  <div className="space-y-1 max-h-[300px] overflow-y-auto">
-                    {availableProfiles.map((profile) => {
-                      const name = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email
-                      const seed = profile.email || profile.id
-                      const isSelected = selectedAssignees.includes(profile.id)
-                      return (
-                        <Button
-                          key={profile.id}
-                          type="button"
-                          variant="ghost"
-                          className="w-full justify-start"
-                          onClick={() => toggleAssignee(profile.id)}
-                        >
-                          <Avatar className="h-6 w-6 mr-2">
-                            <AvatarImage src={getDiceBearAvatar(seed)} alt={name} />
-                            <AvatarFallback className="text-xs">
-                              {profile.first_name?.[0] || profile.email?.[0]?.toUpperCase() || '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="flex-1 text-left">{name}</span>
-                          {isSelected && <X className="h-4 w-4" />}
-                        </Button>
-                      )
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                    <PopoverContent className="w-64 p-2" align="start">
+                      <div className="space-y-1 max-h-[300px] overflow-y-auto">
+                        {availableProfiles.map((profile) => {
+                          const name =
+                            `${profile.first_name || ''} ${profile.last_name || ''}`.trim() ||
+                            profile.email
+                          const seed = profile.email || profile.id
+                          const isSelected = selectedAssignees.includes(profile.id)
+                          return (
+                            <Button
+                              key={profile.id}
+                              type="button"
+                              variant="ghost"
+                              className="w-full justify-start"
+                              onClick={() => toggleAssignee(profile.id)}
+                            >
+                              <Avatar className="h-6 w-6 mr-2">
+                                <AvatarImage src={getDiceBearAvatar(seed)} alt={name} />
+                                <AvatarFallback className="text-xs">
+                                  {profile.first_name?.[0] ||
+                                    profile.email?.[0]?.toUpperCase() ||
+                                    '?'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="flex-1 text-left">{name}</span>
+                              {isSelected && <X className="h-4 w-4" />}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Due Date */}
@@ -311,22 +333,22 @@ export function TaskForm({
                       >
                         <Calendar className="mr-2 h-4 w-4" />
                         {formData.due_date ? (
-                          format(formData.due_date, "MMM dd, yyyy")
+                          format(formData.due_date, 'MMM dd, yyyy')
                         ) : (
                           <span>Select date</span>
                         )}
                       </Button>
                     </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <DatePicker
-                    value={formData.due_date}
-                    onChange={(date) => {
-                      setFormData({ ...formData, due_date: date })
-                      setDateOpen(false)
-                    }}
-                  />
-                </PopoverContent>
-              </Popover>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <DatePicker
+                        value={formData.due_date}
+                        onChange={(date) => {
+                          setFormData({ ...formData, due_date: date })
+                          setDateOpen(false)
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Priority */}
@@ -339,35 +361,39 @@ export function TaskForm({
                         variant="outline"
                         className="w-full justify-start text-left font-normal"
                       >
-                        <PriorityIcon className={cn("mr-2 h-4 w-4", priorityColor)} />
-                        {selectedPriorityOption ? selectedPriorityOption.label : <span>Select priority</span>}
+                        <PriorityIcon className={cn('mr-2 h-4 w-4', priorityColor)} />
+                        {selectedPriorityOption ? (
+                          selectedPriorityOption.label
+                        ) : (
+                          <span>Select priority</span>
+                        )}
                       </Button>
                     </PopoverTrigger>
-                <PopoverContent className="w-48 p-2" align="start">
-                  <div className="space-y-1">
-                    {priorityOptions.map((option) => {
-                      const Icon = priorityIcons[option.value]?.icon || Flag
-                      const color = priorityIcons[option.value]?.color || "text-gray-500"
-                      const isSelected = formData.priority === option.value
-                      return (
-                        <Button
-                          key={option.value}
-                          type="button"
-                          variant="ghost"
-                          className={cn("w-full justify-start", isSelected && "bg-accent")}
-                          onClick={() => {
-                            setFormData({ ...formData, priority: option.value })
-                            setPriorityOpen(false)
-                          }}
-                        >
-                          <Icon className={cn("mr-2 h-4 w-4", color)} />
-                          <span>{option.label}</span>
-                        </Button>
-                      )
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                    <PopoverContent className="w-48 p-2" align="start">
+                      <div className="space-y-1">
+                        {priorityOptions.map((option) => {
+                          const Icon = priorityIcons[option.value]?.icon || Flag
+                          const color = priorityIcons[option.value]?.color || 'text-gray-500'
+                          const isSelected = formData.priority === option.value
+                          return (
+                            <Button
+                              key={option.value}
+                              type="button"
+                              variant="ghost"
+                              className={cn('w-full justify-start', isSelected && 'bg-accent')}
+                              onClick={() => {
+                                setFormData({ ...formData, priority: option.value })
+                                setPriorityOpen(false)
+                              }}
+                            >
+                              <Icon className={cn('mr-2 h-4 w-4', color)} />
+                              <span>{option.label}</span>
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Department */}
@@ -382,47 +408,54 @@ export function TaskForm({
                       >
                         <Tag className="mr-2 h-4 w-4" />
                         {formData.department_id ? (
-                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-                            {departmentOptions.find(d => d.value === formData.department_id)?.label || "Select department"}
+                          <Badge
+                            variant="secondary"
+                            className="bg-blue-100 text-blue-800 hover:bg-blue-200"
+                          >
+                            {departmentOptions.find((d) => d.value === formData.department_id)
+                              ?.label || 'Select department'}
                           </Badge>
                         ) : (
                           <span>Select department</span>
                         )}
                       </Button>
                     </PopoverTrigger>
-                <PopoverContent className="w-48 p-2" align="start">
-                  <div className="space-y-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className={cn("w-full justify-start", !formData.department_id && "bg-accent")}
-                      onClick={() => {
-                        setFormData({ ...formData, department_id: undefined })
-                        setTagOpen(false)
-                      }}
-                    >
-                      None
-                    </Button>
-                    {departmentOptions.map((option) => {
-                      const isSelected = formData.department_id === option.value
-                      return (
+                    <PopoverContent className="w-48 p-2" align="start">
+                      <div className="space-y-1">
                         <Button
-                          key={option.value}
                           type="button"
                           variant="ghost"
-                          className={cn("w-full justify-start", isSelected && "bg-accent")}
+                          className={cn(
+                            'w-full justify-start',
+                            !formData.department_id && 'bg-accent'
+                          )}
                           onClick={() => {
-                            setFormData({ ...formData, department_id: option.value })
+                            setFormData({ ...formData, department_id: undefined })
                             setTagOpen(false)
                           }}
                         >
-                          {option.label}
+                          None
                         </Button>
-                      )
-                    })}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                        {departmentOptions.map((option) => {
+                          const isSelected = formData.department_id === option.value
+                          return (
+                            <Button
+                              key={option.value}
+                              type="button"
+                              variant="ghost"
+                              className={cn('w-full justify-start', isSelected && 'bg-accent')}
+                              onClick={() => {
+                                setFormData({ ...formData, department_id: option.value })
+                                setTagOpen(false)
+                              }}
+                            >
+                              {option.label}
+                            </Button>
+                          )
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Estimated Duration */}
@@ -443,25 +476,25 @@ export function TaskForm({
                         )}
                       </Button>
                     </PopoverTrigger>
-                <PopoverContent className="w-64 p-4" align="start">
-                  <div className="space-y-2">
-                    <Label>Duration (minutes)</Label>
-                    <Input
-                      type="number"
-                      placeholder="e.g., 120"
-                      value={formData.estimated_duration || ""}
-                      onChange={(e) => {
-                        const value = e.target.value ? parseInt(e.target.value) : undefined
-                        setFormData({ ...formData, estimated_duration: value })
-                      }}
-                      min="1"
-                    />
-                    <div className="text-xs text-muted-foreground">
-                      Common: 15m, 30m, 1h (60m), 2h (120m), 4h (240m)
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                    <PopoverContent className="w-64 p-4" align="start">
+                      <div className="space-y-2">
+                        <Label>Duration (minutes)</Label>
+                        <Input
+                          type="number"
+                          placeholder="e.g., 120"
+                          value={formData.estimated_duration || ''}
+                          onChange={(e) => {
+                            const value = e.target.value ? parseInt(e.target.value) : undefined
+                            setFormData({ ...formData, estimated_duration: value })
+                          }}
+                          min="1"
+                        />
+                        <div className="text-xs text-muted-foreground">
+                          Common: 15m, 30m, 1h (60m), 2h (120m), 4h (240m)
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 {/* Important Links */}
@@ -476,77 +509,84 @@ export function TaskForm({
                       >
                         <Link2 className="mr-2 h-4 w-4" />
                         {links.length > 0 ? (
-                          <span>{links.length} link{links.length > 1 ? 's' : ''}</span>
+                          <span>
+                            {links.length} link{links.length > 1 ? 's' : ''}
+                          </span>
                         ) : (
                           <span>Add links</span>
                         )}
                       </Button>
                     </PopoverTrigger>
-                <PopoverContent className="w-80 p-4" align="start">
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Label>URL</Label>
-                      <Input
-                        placeholder="https://..."
-                        value={newLinkUrl}
-                        onChange={(e) => setNewLinkUrl(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault()
-                            addLink()
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Label (optional)</Label>
-                      <Input
-                        placeholder="Link name"
-                        value={newLinkLabel}
-                        onChange={(e) => setNewLinkLabel(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault()
-                            addLink()
-                          }
-                        }}
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={addLink}
-                      disabled={!newLinkUrl.trim()}
-                      className="w-full"
-                    >
-                      <PlusIcon className="h-4 w-4 mr-2" />
-                      Add Link
-                    </Button>
-                    {links.length > 0 && (
-                      <div className="space-y-2 border-t pt-2">
-                        <Label className="text-xs">Links</Label>
-                        {links.map((link, idx) => (
-                          <div key={idx} className="flex items-center justify-between gap-2 p-2 bg-muted rounded">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate">{link.label}</div>
-                              <div className="text-xs text-muted-foreground truncate">{link.url}</div>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => removeLink(idx)}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                    <PopoverContent className="w-80 p-4" align="start">
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label>URL</Label>
+                          <Input
+                            placeholder="https://..."
+                            value={newLinkUrl}
+                            onChange={(e) => setNewLinkUrl(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                addLink()
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Label (optional)</Label>
+                          <Input
+                            placeholder="Link name"
+                            value={newLinkLabel}
+                            onChange={(e) => setNewLinkLabel(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                addLink()
+                              }
+                            }}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={addLink}
+                          disabled={!newLinkUrl.trim()}
+                          className="w-full"
+                        >
+                          <PlusIcon className="h-4 w-4 mr-2" />
+                          Add Link
+                        </Button>
+                        {links.length > 0 && (
+                          <div className="space-y-2 border-t pt-2">
+                            <Label className="text-xs">Links</Label>
+                            {links.map((link, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center justify-between gap-2 p-2 bg-muted rounded"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium truncate">{link.label}</div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {link.url}
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0"
+                                  onClick={() => removeLink(idx)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
@@ -555,7 +595,7 @@ export function TaskForm({
                 <Label>Description</Label>
                 <Textarea
                   placeholder="Enter task description..."
-                  value={formData.description || ""}
+                  value={formData.description || ''}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="min-h-[100px]"
                 />
@@ -567,4 +607,3 @@ export function TaskForm({
     </Dialog>
   )
 }
-

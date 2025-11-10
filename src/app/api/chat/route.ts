@@ -19,7 +19,11 @@ const openrouter = createOpenRouter({
 if (!process.env.OPENROUTER_API_KEY) {
   console.error('❌ [API] OPENROUTER_API_KEY is not set in environment variables!')
 } else {
-  console.log('✅ [API] OPENROUTER_API_KEY is set (length:', process.env.OPENROUTER_API_KEY.length, ')')
+  console.log(
+    '✅ [API] OPENROUTER_API_KEY is set (length:',
+    process.env.OPENROUTER_API_KEY.length,
+    ')'
+  )
 }
 
 export async function POST(req: NextRequest) {
@@ -27,20 +31,17 @@ export async function POST(req: NextRequest) {
     console.log('🚀 [API ROUTE /api/chat] ===== POST REQUEST RECEIVED =====')
     console.log('🚀 [API ROUTE /api/chat] Request URL:', req.url)
     console.log('🚀 [API ROUTE /api/chat] Request method:', req.method)
-    
-    // Verify authentication
-    const supabase = await createServerClient()
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
 
-    if (authError || !user) {
-      console.error('API: Unauthorized request', { authError, hasUser: !!user })
+    // Verify authentication
+    const { getClerkUserId } = await import('@/lib/auth/clerk')
+    const userId = await getClerkUserId()
+
+    if (!userId) {
+      console.error('API: Unauthorized request')
       return new Response('Unauthorized', { status: 401 })
     }
 
-    console.log('API: User authenticated:', user.id)
+    console.log('API: User authenticated:', userId)
 
     // Parse request body
     const body = await req.json()
@@ -61,11 +62,18 @@ export async function POST(req: NextRequest) {
 
     // Stream response from OpenRouter
     console.log('🤖 [API] Calling OpenRouter with model: gpt-4o-mini')
-    console.log('🤖 [API] Messages being sent:', JSON.stringify(messages.map((m: any) => ({
-      role: m.role,
-      contentLength: m.content?.length || 0,
-    })), null, 2))
-    
+    console.log(
+      '🤖 [API] Messages being sent:',
+      JSON.stringify(
+        messages.map((m: any) => ({
+          role: m.role,
+          contentLength: m.content?.length || 0,
+        })),
+        null,
+        2
+      )
+    )
+
     try {
       const result = await streamText({
         model: openrouter('gpt-4o-mini'),
@@ -75,16 +83,16 @@ export async function POST(req: NextRequest) {
 
       console.log('✅ [API] Stream created successfully')
       console.log('✅ [API] Returning toTextStreamResponse()')
-      
+
       // Log stream info if available
       if ((result as any).textStream) {
         console.log('✅ [API] Stream has textStream property')
       }
-      
+
       const response = result.toTextStreamResponse()
       console.log('✅ [API] Response object created')
       console.log('✅ [API] Response headers:', Object.fromEntries(response.headers.entries()))
-      
+
       return response
     } catch (streamError) {
       console.error('❌ [API] Error creating stream:', streamError)
@@ -109,4 +117,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

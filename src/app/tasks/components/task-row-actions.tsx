@@ -1,7 +1,7 @@
-"use client"
+'use client'
 
-import { Row } from "@tanstack/react-table"
-import { Button } from "@/components/ui/button"
+import { Row } from '@tanstack/react-table'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,9 +9,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Edit, Trash2, UserPlus } from "lucide-react"
-import type { TaskFull } from "@/lib/types/tasks"
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Eye, Edit, Trash2, UserPlus } from 'lucide-react'
+import type { TaskFull } from '@/lib/types/tasks'
 
 interface TaskRowActionsProps {
   row: Row<TaskFull>
@@ -21,13 +21,7 @@ interface TaskRowActionsProps {
   onAssign?: (task: TaskFull) => void
 }
 
-export function TaskRowActions({ 
-  row, 
-  onView, 
-  onEdit, 
-  onDelete, 
-  onAssign 
-}: TaskRowActionsProps) {
+export function TaskRowActions({ row, onView, onEdit, onDelete, onAssign }: TaskRowActionsProps) {
   const task = row.original
 
   return (
@@ -61,10 +55,7 @@ export function TaskRowActions({
         {onDelete && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
-              onClick={() => onDelete(task)}
-              className="text-destructive"
-            >
+            <DropdownMenuItem onClick={() => onDelete(task)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Task
             </DropdownMenuItem>
@@ -74,4 +65,3 @@ export function TaskRowActions({
     </DropdownMenu>
   )
 }
-

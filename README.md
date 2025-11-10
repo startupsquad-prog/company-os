@@ -14,29 +14,33 @@ Internal platform for managing all departments: HR + Employee Management, Sales 
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Supabase project
 
 ### Installation
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Set up environment variables:
+
 ```bash
 cp .env.example .env.local
 ```
 
 Add your Supabase credentials:
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 3. Run the development server:
+
 ```bash
 npm run dev
 ```
@@ -80,4 +84,3 @@ src/
 ## License
 
 Private - Company OS Internal Platform
-

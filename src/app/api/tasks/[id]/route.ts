@@ -6,10 +6,7 @@ import type { TaskUpdate } from '@/lib/types/supabase'
  * GET /api/tasks/[id]
  * Get a single task by ID
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
 
@@ -37,10 +34,7 @@ export async function GET(
  * PATCH /api/tasks/[id]
  * Update a task
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
 
@@ -84,4 +78,3 @@ export async function PATCH(
     )
   }
 }
-

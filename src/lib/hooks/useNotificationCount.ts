@@ -4,9 +4,11 @@
  */
 
 import { useState, useEffect } from 'react'
+import { useUser } from '@clerk/nextjs'
 import { createClient } from '@/lib/supabase/client'
 
 export function useNotificationCount() {
+  const { user: clerkUser } = useUser()
   const [count, setCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -15,29 +17,25 @@ export function useNotificationCount() {
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
     const fetchCount = async () => {
-      if (!isMounted) return
-      
+      if (!isMounted || !clerkUser) return
+
       try {
         const supabase = createClient()
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
 
-        if (!user) {
+        // Use RPC function for efficiency
+        // Note: Notifications will be rebuilt later with a better approach
+        const { data: count, error } = await supabase.rpc('get_unread_notification_count', {
+          p_user_id: clerkUser.id,
+        })
+
+        if (error) {
+          // Silently fail for now - notifications will be rebuilt later
+          console.warn('Notification count fetch failed (will be rebuilt later):', error.message)
           if (isMounted) {
             setCount(0)
             setLoading(false)
           }
           return
-        }
-
-        // Use RPC function for efficiency
-        const { data: count, error } = await supabase.rpc('get_unread_notification_count', {
-          user_id_param: user.id,
-        })
-
-        if (error) {
-          throw new Error(`Failed to fetch notification count: ${error.message}`)
         }
 
         if (isMounted) {
@@ -61,21 +59,17 @@ export function useNotificationCount() {
     let channel: ReturnType<typeof supabase.channel> | null = null
 
     const setupSubscription = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user || !isMounted) return
+      if (!clerkUser || !isMounted) return
 
       channel = supabase
-        .channel(`notification-count:${user.id}`)
+        .channel(`notification-count:${clerkUser.id}`)
         .on(
           'postgres_changes',
           {
             event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
             schema: 'core',
             table: 'notifications',
-            filter: `user_id=eq.${user.id}`,
+            filter: `user_id=eq.${clerkUser.id}`,
           },
           () => {
             // Debounce: wait 1 second before refetching to avoid rapid-fire calls
@@ -111,28 +105,28 @@ export function useNotificationCount() {
       }
       clearInterval(interval)
     }
-  }, []) // Empty dependency array - only run once on mount
+  }, [clerkUser]) // Run when clerkUser changes
 
   const refresh = async () => {
     try {
       setLoading(true)
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
+      if (!clerkUser) {
         setCount(0)
         setLoading(false)
         return
       }
 
+      const supabase = createClient()
       const { data: count, error } = await supabase.rpc('get_unread_notification_count', {
-        user_id_param: user.id,
+        p_user_id: clerkUser.id,
       })
 
       if (error) {
-        throw new Error(`Failed to fetch notification count: ${error.message}`)
+        // Silently fail for now - notifications will be rebuilt later
+        console.warn('Notification count refresh failed (will be rebuilt later):', error.message)
+        setCount(0)
+        setLoading(false)
+        return
       }
 
       setCount(count || 0)

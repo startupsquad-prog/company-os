@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import type { useAgentChat } from '@/lib/hooks/useAgentChat'
 
@@ -43,52 +44,6 @@ export function AgentChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
-  const [position, setPosition] = useState<{ bottom: number; left: number; right?: number } | null>(null)
-
-  // Calculate position above agent icon
-  useEffect(() => {
-    if (!isOpen || !iconRef.current) {
-      setPosition(null)
-      return
-    }
-
-    const updatePosition = () => {
-      const icon = iconRef.current
-      if (!icon) return
-
-      const rect = icon.getBoundingClientRect()
-      const viewportWidth = window.innerWidth
-      const panelWidth = 380 // Base width
-      const panelHeight = 400 // Base height
-      const gap = 8 // Gap between icon and panel
-
-      // Calculate horizontal position (center above icon)
-      let left = rect.left + rect.width / 2 - panelWidth / 2
-      let right: number | undefined = undefined
-
-      // Ensure panel doesn't go off screen
-      if (left < 16) {
-        left = 16
-      } else if (left + panelWidth > viewportWidth - 16) {
-        right = 16
-        left = undefined as any
-      }
-
-      // Calculate vertical position (above icon)
-      const bottom = window.innerHeight - rect.top + gap
-
-      setPosition({ bottom, left, right })
-    }
-
-    updatePosition()
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-
-    return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
-    }
-  }, [isOpen, iconRef])
 
   // Smooth auto-scroll to bottom - only when needed, with throttling
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -122,11 +77,14 @@ export function AgentChatPanel({
         clearTimeout(scrollTimeoutRef.current)
       }
 
-      scrollTimeoutRef.current = setTimeout(() => {
-        if (messagesEndRef.current && !isUserScrollingRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
-        }
-      }, isStreaming ? 100 : 0)
+      scrollTimeoutRef.current = setTimeout(
+        () => {
+          if (messagesEndRef.current && !isUserScrollingRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' })
+          }
+        },
+        isStreaming ? 100 : 0
+      )
     }
 
     lastMessageCountRef.current = messages.length
@@ -169,9 +127,15 @@ export function AgentChatPanel({
     }
   }
 
-  // Map agent names to 3D icons from the local pack
+  // Map agent names to icons
   const getAgentIcon = (agentName: string): string => {
     const iconMap: Record<string, string> = {
+      'Email Generator':
+        '/ai-agents-icons/1aa2a1f4-b620-414e-8ad3-c0eba625abb3-removebg-preview.png',
+      'WhatsApp Reply Generator':
+        '/ai-agents-icons/3ebccd01-dfed-424f-900a-ed063978b8ac-removebg-preview.png',
+      'Payment Link Generator':
+        '/ai-agents-icons/91cb7dcc-9a18-48f7-9047-0836570df63c-removebg-preview.png',
       'Sales Assistant': '/ai-3d-icons-pack/28_massage ai.png',
       'Ops Helper': '/ai-3d-icons-pack/15_gear.png',
       'Task Master': '/ai-3d-icons-pack/4_book.png',
@@ -179,37 +143,18 @@ export function AgentChatPanel({
       'Data Analyst': '/ai-3d-icons-pack/11_dna.png',
       'Quick Answers': '/ai-3d-icons-pack/1_aichat.png',
     }
-    
+
     return iconMap[agentName] || '/ai-3d-icons-pack/32_ ai robot.png'
   }
-
-  if (!isOpen || !position) return null
 
   const agentName = agent?.name || 'Agent'
   const agentDescription = agent?.description || ''
 
   return (
-    <Card
-      className={cn(
-        'fixed z-40 flex flex-col',
-        'w-[380px] h-[400px]',
-        'max-w-[calc(100vw-2rem)]',
-        'max-h-[calc(100vh-5rem)]',
-        'bg-card border-border text-foreground shadow-xl rounded-xl',
-        'transition-[opacity,transform] duration-300 ease-out',
-        'will-change-[opacity,transform]',
-        'pointer-events-auto',
-        'overflow-hidden',
-        'isolate'
-      )}
-      style={{
-        bottom: `${position.bottom}px`,
-        ...(position.left !== undefined ? { left: `${position.left}px` } : {}),
-        ...(position.right !== undefined ? { right: `${position.right}px`, left: 'auto' } : {}),
-        maxWidth: 'calc(100vw - 2rem)',
-        maxHeight: 'calc(100vh - 5rem)',
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] p-0 flex flex-col overflow-hidden">
+        <DialogTitle className="sr-only">{agentName} Chat</DialogTitle>
+        <div className="flex flex-col h-full overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 pt-3 px-4 border-b shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <div className="h-8 w-8 shrink-0 rounded-lg overflow-hidden bg-transparent">
@@ -242,15 +187,6 @@ export function AgentChatPanel({
               <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 sm:h-8 sm:w-8"
-            onClick={onClose}
-            aria-label="Close chat"
-          >
-            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </Button>
         </div>
       </CardHeader>
 
@@ -292,7 +228,9 @@ export function AgentChatPanel({
                 content = (message as any).content
               } else if (Array.isArray((message as any).content)) {
                 content = (message as any).content
-                  .map((part: any) => typeof part === 'string' ? part : part.text || part.content || '')
+                  .map((part: any) =>
+                    typeof part === 'string' ? part : part.text || part.content || ''
+                  )
                   .filter(Boolean)
                   .join('')
               } else {
@@ -315,7 +253,9 @@ export function AgentChatPanel({
                         : 'bg-muted text-muted-foreground'
                     )}
                   >
-                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words pr-6">{content}</p>
+                    <p className="text-xs sm:text-sm whitespace-pre-wrap break-words pr-6">
+                      {content}
+                    </p>
                     {message.role === 'assistant' && (
                       <Button
                         variant="ghost"
@@ -402,8 +342,9 @@ export function AgentChatPanel({
             )}
           </Button>
         </form>
-      </CardContent>
-    </Card>
+        </CardContent>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
-

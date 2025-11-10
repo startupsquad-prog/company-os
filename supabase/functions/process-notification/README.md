@@ -23,5 +23,3 @@ The function is called automatically when notifications are triggered via `trigg
 - Prevents duplicate notifications (5-minute window)
 - Rate limiting prevents spam
 - Errors are logged but don't cause retries
-
-

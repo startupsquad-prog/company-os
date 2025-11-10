@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { getClerkUserId } from '@/lib/auth/clerk'
 import { getUnreadCount } from '@/lib/notifications/notifications'
 
 /**
@@ -13,16 +13,13 @@ import { getUnreadCount } from '@/lib/notifications/notifications'
  */
 export async function GET(req: NextRequest) {
   try {
-    const supabase = await createServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const userId = await getClerkUserId()
 
-    if (!user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const count = await getUnreadCount(user.id)
+    const count = await getUnreadCount(userId)
 
     return NextResponse.json({ count })
   } catch (error) {
@@ -31,7 +28,10 @@ export async function GET(req: NextRequest) {
     const errorDetails = error instanceof Error ? error.stack : String(error)
     console.error('Error details:', errorDetails)
     return NextResponse.json(
-      { error: errorMessage, details: process.env.NODE_ENV === 'development' ? errorDetails : undefined },
+      {
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorDetails : undefined,
+      },
       { status: 500 }
     )
   }

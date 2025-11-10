@@ -54,4 +54,3 @@ export interface TaskFormData {
   important_links?: Array<{ url: string; label: string }>
   assignees?: { profile_id: string; role: 'owner' | 'collaborator' | 'watcher' }[]
 }
-

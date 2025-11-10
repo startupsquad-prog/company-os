@@ -6,10 +6,7 @@ import { createServerClient } from '@/lib/supabase/server'
  * POST /api/tasks/[id]/comments
  * Add a comment to a task
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
 
@@ -47,4 +44,3 @@ export async function POST(
     )
   }
 }
-

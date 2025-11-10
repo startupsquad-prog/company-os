@@ -1,37 +1,32 @@
 'use client'
 
-import { Settings } from 'lucide-react'
+import { Settings, UserPlus } from 'lucide-react'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Separator } from '@/components/ui/separator'
 import { SidebarTrigger } from '@/components/ui/sidebar'
 import { NotificationsDropdown } from '@/components/notifications-dropdown'
 import { SearchCommand, SearchButton } from '@/components/search-command'
+import { SalesCounter } from '@/components/sales-counter'
+import { TopbarAgents } from '@/components/topbar-agents'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { ThemeToggleButton } from '@/components/theme-toggle'
-import { createClient } from '@/lib/supabase/client'
+import { InviteUserDialog } from '@/components/invite-user-dialog'
+import { UserButton } from '@clerk/nextjs'
+import { useUserRole } from '@/lib/hooks/useUserRole'
 import { useRole } from '@/lib/roles/use-role'
-import { toast } from 'sonner'
+import { RollingUpdatesBanner } from '@/components/rolling-updates-banner'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export function DashboardTopbar() {
   const [searchOpen, setSearchOpen] = useState(false)
-  const [user, setUser] = useState<{
-    name: string
-    email: string
-    avatar: string
-  } | null>(null)
-  const [userLoading, setUserLoading] = useState(true)
-  const router = useRouter()
-  const { activeRole, roles } = useRole()
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false)
+  const { role: userRole } = useUserRole()
+  const { activeRole } = useRole()
+  const isMobile = useIsMobile()
+
+  // Check if user can invite (admin or superadmin)
+  const effectiveRole = userRole ?? (activeRole?.role_name as 'employee' | 'manager' | 'admin' | 'superadmin' | null)
+  const canInvite = effectiveRole === 'admin' || effectiveRole === 'superadmin'
 
   // Keyboard shortcut handler for Ctrl+K / Cmd+K
   useEffect(() => {
@@ -46,154 +41,109 @@ export function DashboardTopbar() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Fetch user data
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        setUserLoading(true)
-        const supabase = createClient()
-        const {
-          data: { user: authUser },
-          error: authError,
-        } = await supabase.auth.getUser()
-
-        if (authError) {
-          console.error('Error getting user:', authError)
-          setUserLoading(false)
-          return
-        }
-
-        if (authUser) {
-          // Get profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', authUser.id)
-            .single()
-
-          if (profileError && profileError.code !== 'PGRST116') {
-            console.error('Error fetching profile:', profileError)
-          }
-
-          if (profile) {
-            const fullName = [profile.first_name, profile.last_name]
-              .filter(Boolean)
-              .join(' ') || authUser.email?.split('@')[0] || 'User'
-
-            setUser({
-              name: fullName,
-              email: profile.email || authUser.email || '',
-              avatar: profile.avatar_url || '',
-            })
-          } else {
-            setUser({
-              name: authUser.email?.split('@')[0] || 'User',
-              email: authUser.email || '',
-              avatar: '',
-            })
-          }
-        } else {
-          setUser(null)
-        }
-      } catch (error) {
-        console.error('Error loading user:', error)
-      } finally {
-        setUserLoading(false)
-      }
-    }
-
-    loadUser()
-  }, [])
-
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    toast.success('Signed out successfully')
-    router.push('/login')
-  }
-
-  const initials = user?.name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2) || 'U'
-
   return (
-    <header className="sticky top-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 isolate">
-      {/* Left: Sidebar Trigger */}
-      <div className="flex items-center gap-2">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
-      </div>
-
-      {/* Center: Search Bar */}
-      <div className="flex-1 flex justify-center">
-        <div className="w-full max-w-md">
-          <SearchButton onClick={() => setSearchOpen(true)} />
+    <div className="sticky top-0 z-50 isolate">
+      {/* Rolling Updates Banner */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="px-2 sm:px-4 py-1.5 sm:py-2">
+          <RollingUpdatesBanner />
         </div>
       </div>
+
+      {/* Main Topbar */}
+      <header className="flex h-14 sm:h-16 shrink-0 items-center gap-1 sm:gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-2 sm:px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+        {/* Left: Sidebar Trigger */}
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          <SidebarTrigger />
+        </div>
+
+        {/* Center: Search Bar - Hidden on mobile, shown on tablet+ */}
+        {!isMobile && (
+        <div className="flex-1 flex justify-center">
+          <div className="w-full max-w-md">
+            <SearchButton onClick={() => setSearchOpen(true)} />
+          </div>
+        </div>
+        )}
 
       {/* Search Command Dialog */}
       <SearchCommand open={searchOpen} onOpenChange={setSearchOpen} />
 
       {/* Right: Actions & Profile */}
-      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 ml-auto">
+          {/* Sales Counter - Hidden on mobile */}
+          {!isMobile && <SalesCounter />}
+          
+          {/* Topbar Agents - Hidden on mobile */}
+          {!isMobile && <TopbarAgents />}
+          
+          {/* Notifications - Always visible */}
         <NotificationsDropdown />
-        <ThemeToggleButton variant="circle" start="center" blur={true} size="icon" className="h-9 w-9" />
-        <Button variant="ghost" size="icon" className="h-9 w-9">
+          
+          {/* Theme Toggle - Hidden on mobile */}
+          {!isMobile && (
+        <ThemeToggleButton
+          variant="circle"
+          start="center"
+          blur={true}
+          size="icon"
+              className="h-8 w-8 sm:h-9 sm:w-9"
+        />
+          )}
+          
+          {/* Settings - Hidden on mobile */}
+          {!isMobile && (
+            <>
+              <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
           <Settings className="h-4 w-4" />
           <span className="sr-only">Settings</span>
         </Button>
-        <Separator orientation="vertical" className="h-6" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-              {userLoading ? (
-                <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
-              ) : user ? (
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>{initials}</AvatarFallback>
-                </Avatar>
-              ) : (
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            {user ? (
-              <>
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user.name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {activeRole ? activeRole.role_name : roles.length > 0 ? roles[0].role_name : 'No role'}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Profile</DropdownMenuItem>
-                <DropdownMenuItem>Settings</DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
-            ) : (
-              <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    {userLoading ? 'Loading...' : 'User'}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-            )}
-            <DropdownMenuItem onClick={handleSignOut}>Log out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <Separator orientation="vertical" className="h-5 sm:h-6" />
+            </>
+          )}
+          
+          {/* User Button - Always visible */}
+        <UserButton afterSignOutUrl="/login" />
+          
+          {/* Mobile Search Button - Only on mobile */}
+          {isMobile && (
+            <>
+              <Separator orientation="vertical" className="h-5 sm:h-6" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 sm:h-9 sm:w-9"
+                onClick={() => setSearchOpen(true)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.3-4.3" />
+                </svg>
+                <span className="sr-only">Search</span>
+              </Button>
+            </>
+          )}
       </div>
-    </header>
+
+      {/* Invite User Dialog */}
+      <InviteUserDialog
+        open={inviteDialogOpen}
+        onOpenChange={setInviteDialogOpen}
+        onSuccess={() => {
+          // Optionally refresh user list or show success message
+        }}
+      />
+      </header>
+    </div>
   )
 }
-

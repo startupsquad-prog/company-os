@@ -6,11 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export type AnimationVariant =
-  | 'circle'
-  | 'rectangle'
-  | 'circle-blur'
-  | 'polygon'
+export type AnimationVariant = 'circle' | 'rectangle' | 'circle-blur' | 'polygon'
 
 export type AnimationStart =
   | 'top-left'
@@ -109,11 +105,11 @@ export const createAnimation = (
   start: AnimationStart = 'center',
   blur = false,
   clickX?: number,
-  clickY?: number,
+  clickY?: number
 ): Animation => {
   const svg = generateSVG(variant, start)
   const transformOrigin = getTransformOrigin(start)
-  
+
   // Calculate click position as percentage if provided
   const getClickPosition = () => {
     if (clickX !== undefined && clickY !== undefined && typeof window !== 'undefined') {
@@ -123,7 +119,7 @@ export const createAnimation = (
     }
     return null
   }
-  
+
   const clickPosition = getClickPosition()
 
   if (variant === 'rectangle') {
@@ -235,11 +231,11 @@ export const createAnimation = (
     // Use click position if available, otherwise use center
     const circlePosition = clickPosition || '50% 50%'
     // Create a unique animation name based on click position (rounded to avoid too many variations)
-    const positionHash = clickPosition 
+    const positionHash = clickPosition
       ? `-${Math.round((clickX || 0) / 10)}-${Math.round((clickY || 0) / 10)}`
       : ''
     const animationName = `reveal${positionHash}${blur ? '-blur' : ''}`
-    
+
     return {
       name: `${variant}-${start}${blur ? '-blur' : ''}`,
       css: `
@@ -497,25 +493,28 @@ export const useThemeToggle = ({
     styleElement.textContent = css
   }, [])
 
-  const toggleTheme = useCallback((clickX?: number, clickY?: number) => {
-    setIsDark(!isDark)
+  const toggleTheme = useCallback(
+    (clickX?: number, clickY?: number) => {
+      setIsDark(!isDark)
 
-    const animation = createAnimation(variant, start, blur, clickX, clickY)
-    updateStyles(animation.css)
+      const animation = createAnimation(variant, start, blur, clickX, clickY)
+      updateStyles(animation.css)
 
-    if (typeof window === 'undefined') return
+      if (typeof window === 'undefined') return
 
-    const switchTheme = () => {
-      setTheme(theme === 'light' ? 'dark' : 'light')
-    }
+      const switchTheme = () => {
+        setTheme(theme === 'light' ? 'dark' : 'light')
+      }
 
-    if (!document.startViewTransition) {
-      switchTheme()
-      return
-    }
+      if (!document.startViewTransition) {
+        switchTheme()
+        return
+      }
 
-    document.startViewTransition(switchTheme)
-  }, [theme, setTheme, variant, start, blur, updateStyles, isDark])
+      document.startViewTransition(switchTheme)
+    },
+    [theme, setTheme, variant, start, blur, updateStyles, isDark]
+  )
 
   return {
     isDark,
@@ -555,20 +554,12 @@ export function ThemeToggleButton({
       type="button"
       variant="ghost"
       size={size}
-      className={cn(
-        'cursor-pointer transition-all duration-300 active:scale-95',
-        className,
-      )}
+      className={cn('cursor-pointer transition-all duration-300 active:scale-95', className)}
       onClick={handleClick}
       aria-label="Toggle theme"
     >
       <span className="sr-only">Toggle theme</span>
-      {isDark ? (
-        <Sun className="h-4 w-4" />
-      ) : (
-        <Moon className="h-4 w-4" />
-      )}
+      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </Button>
   )
 }
-

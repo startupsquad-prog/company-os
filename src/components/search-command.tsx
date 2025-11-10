@@ -102,10 +102,7 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
     return () => clearTimeout(timeoutId)
   }, [query])
 
-  const handleSelect = (item: {
-    type: 'task' | 'contact' | 'company' | 'profile'
-    id: string
-  }) => {
+  const handleSelect = (item: { type: 'task' | 'contact' | 'company' | 'profile'; id: string }) => {
     switch (item.type) {
       case 'task':
         router.push(`/tasks?task=${item.id}`)
@@ -137,9 +134,7 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           </div>
         )}
-        {!loading && query && results.total === 0 && (
-          <CommandEmpty>No results found.</CommandEmpty>
-        )}
+        {!loading && query && results.total === 0 && <CommandEmpty>No results found.</CommandEmpty>}
         {!loading && !query && (
           <div className="px-2 py-6 text-center text-sm text-muted-foreground">
             Start typing to search across tasks, contacts, companies, and people...
@@ -237,9 +232,7 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
               results.companies.length > 0) && <CommandSeparator />}
             <CommandGroup heading="People">
               {results.profiles.map((profile) => {
-                const fullName = [profile.first_name, profile.last_name]
-                  .filter(Boolean)
-                  .join(' ')
+                const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
                 return (
                   <CommandItem
                     key={`profile-${profile.id}`}
@@ -310,4 +303,3 @@ export function SearchButton({ onClick }: { onClick: () => void }) {
     </Button>
   )
 }
-

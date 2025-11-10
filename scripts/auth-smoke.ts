@@ -98,7 +98,7 @@ async function testUser(user: TestUser): Promise<{ success: boolean; errors: str
     errors.push(`Failed to get modules: ${modulesError.message}`)
   } else {
     const moduleArray = modules || []
-    const missingModules = user.expectedModules.filter(m => !moduleArray.includes(m))
+    const missingModules = user.expectedModules.filter((m) => !moduleArray.includes(m))
     const extraModules = moduleArray.filter((m: string) => !user.expectedModules.includes(m))
 
     if (missingModules.length > 0) {
@@ -114,10 +114,13 @@ async function testUser(user: TestUser): Promise<{ success: boolean; errors: str
   }
 
   // 4. Get permissions
-  const { data: permissions, error: permissionsError } = await supabase.rpc('get_user_permissions', {
-    p_user_id: authData.user.id,
-    p_module_name: null,
-  })
+  const { data: permissions, error: permissionsError } = await supabase.rpc(
+    'get_user_permissions',
+    {
+      p_user_id: authData.user.id,
+      p_module_name: null,
+    }
+  )
 
   if (permissionsError) {
     errors.push(`Failed to get permissions: ${permissionsError.message}`)
@@ -165,7 +168,7 @@ async function main() {
     } else {
       failedTests++
       console.log(`   ❌ Tests failed:`)
-      result.errors.forEach(err => console.log(`      - ${err}`))
+      result.errors.forEach((err) => console.log(`      - ${err}`))
       allErrors.push({ user: user.email, errors: result.errors })
     }
   }
@@ -181,7 +184,7 @@ async function main() {
     console.log('❌ Some tests failed. Details:')
     allErrors.forEach(({ user, errors }) => {
       console.log(`\n   ${user}:`)
-      errors.forEach(err => console.log(`     - ${err}`))
+      errors.forEach((err) => console.log(`     - ${err}`))
     })
     process.exit(1)
   }
@@ -189,8 +192,7 @@ async function main() {
   console.log('✨ All tests passed!')
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('💥 Fatal error:', error)
   process.exit(1)
 })
-

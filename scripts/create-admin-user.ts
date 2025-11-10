@@ -37,11 +37,7 @@ const ADMIN_FIRST_NAME = 'Admin'
 const ADMIN_LAST_NAME = 'User'
 
 async function getRoleId(roleName: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('roles')
-    .select('id')
-    .eq('name', roleName)
-    .single()
+  const { data, error } = await supabase.from('roles').select('id').eq('name', roleName).single()
 
   if (error || !data) {
     console.error(`❌ Error fetching role "${roleName}":`, error?.message)
@@ -57,7 +53,7 @@ async function createAdminUser(): Promise<boolean> {
 
     // Check if user already exists
     const { data: existingUsers } = await supabase.auth.admin.listUsers()
-    const existingUser = existingUsers?.users.find(u => u.email === ADMIN_EMAIL)
+    const existingUser = existingUsers?.users.find((u) => u.email === ADMIN_EMAIL)
 
     let userId: string
 
@@ -152,13 +148,11 @@ async function createAdminUser(): Promise<boolean> {
       console.log(`   ⚠️  Superadmin role binding already exists`)
     } else {
       // Create role binding
-      const { error: bindingError } = await supabase
-        .from('user_role_bindings')
-        .insert({
-          user_id: userId,
-          role_id: superadminRoleId,
-          created_by: userId,
-        })
+      const { error: bindingError } = await supabase.from('user_role_bindings').insert({
+        user_id: userId,
+        role_id: superadminRoleId,
+        created_by: userId,
+      })
 
       if (bindingError) {
         console.error(`   ❌ Error creating role binding:`, bindingError.message)
@@ -202,8 +196,7 @@ async function main() {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('💥 Fatal error:', error)
   process.exit(1)
 })
-

@@ -3,41 +3,29 @@
 import { useChat } from '@ai-sdk/react'
 import { DefaultChatTransport } from 'ai'
 import { useEffect, useState, useCallback, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { useUser } from '@clerk/nextjs'
 
 const STORAGE_PREFIX = 'ai-chat-session-'
 
 export function useAiChat() {
-  const [userId, setUserId] = useState<string | null>(null)
+  const { user } = useUser()
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
 
-  // Get user ID for localStorage key
-  useEffect(() => {
-    const getUserId = async () => {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      setUserId(user?.id || null)
-    }
-    getUserId()
-  }, [])
-  
   // Create transport once - DefaultChatTransport handles the response format correctly
   const transport = useMemo(() => {
     return new DefaultChatTransport({
       api: '/api/ai/chat',
     })
   }, [])
-  
+
   // Use Vercel AI SDK's useChat hook with transport
   const chat = useChat({
     transport,
     onError: (error) => {
-      console.error('❌ [useChat] Error:', error);
-      console.error('❌ [useChat] Error message:', error.message);
-      console.error('❌ [useChat] Error stack:', error.stack);
+      console.error('❌ [useChat] Error:', error)
+      console.error('❌ [useChat] Error message:', error.message)
+      console.error('❌ [useChat] Error stack:', error.stack)
     },
     onFinish: ({ message }) => {
       console.log('✅ [useChat] Message finished:', {
@@ -47,20 +35,20 @@ export function useAiChat() {
         partsCount: (message as any).parts?.length || 0,
         parts: (message as any).parts,
         fullMessage: message,
-      });
+      })
     },
     onData: (data) => {
       console.log('📥 [useChat] Data received:', {
         type: data.type,
         data: data,
-      });
+      })
     },
   })
 
   // Debug: Log message updates
   useEffect(() => {
     if (chat.messages.length > 0) {
-      const lastMessage = chat.messages[chat.messages.length - 1];
+      const lastMessage = chat.messages[chat.messages.length - 1]
       console.log('🔄 [useChat] Last message updated:', {
         id: lastMessage.id,
         role: lastMessage.role,
@@ -68,43 +56,53 @@ export function useAiChat() {
         partsCount: (lastMessage as any).parts?.length || 0,
         parts: (lastMessage as any).parts,
         status: chat.status,
-      });
+      })
     }
   }, [chat.messages, chat.status])
 
   // Handle input change
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setInput(e.target.value)
-  }, [])
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      setInput(e.target.value)
+    },
+    []
+  )
 
   // Handle form submission
-  const handleSubmit = useCallback((e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault()
-    if (!input.trim() || chat.status === 'streaming') {
-      return
-    }
-    
-    // Use the simpler text format for sendMessage
-    chat.sendMessage({
-      text: input.trim(),
-    })
-    
-    setInput('')
-  }, [input, chat])
+  const handleSubmit = useCallback(
+    (e?: React.FormEvent<HTMLFormElement>) => {
+      e?.preventDefault()
+      if (!input.trim() || chat.status === 'streaming') {
+        return
+      }
 
-  // Append message (for suggestions)
-  const append = useCallback((message: { role: 'user' | 'assistant'; content: string }) => {
-    if (message.role === 'user') {
       // Use the simpler text format for sendMessage
       chat.sendMessage({
-        text: message.content,
+        text: input.trim(),
       })
-    }
-  }, [chat])
+
+      setInput('')
+    },
+    [input, chat]
+  )
+
+  // Append message (for suggestions)
+  const append = useCallback(
+    (message: { role: 'user' | 'assistant'; content: string }) => {
+      if (message.role === 'user') {
+        // Use the simpler text format for sendMessage
+        chat.sendMessage({
+          text: message.content,
+        })
+      }
+    },
+    [chat]
+  )
 
   // Load messages from localStorage on mount (only once)
   const [hasRestored, setHasRestored] = useState(false)
-  
+  const userId = user?.id || null
+
   useEffect(() => {
     if (!userId || hasRestored) return
 
@@ -165,4 +163,3 @@ export function useAiChat() {
     userId,
   }
 }
-

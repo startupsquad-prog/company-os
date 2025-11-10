@@ -1,0 +1,52 @@
+# Data Table & Grid Standards — TanStack + Server Integration
+
+## Mandatory Pattern for Data-heavy Lists
+- Use TanStack Table v8 for all list/table UIs.
+- Use manual server integration:
+  - manualPagination: true
+  - manualSorting: true
+  - manualFiltering: true
+  - Emit onPaginationChange(pageIndex+1, pageSize), onSortingChange, onFilterChange, onSearchChange to parent.
+  - Parent must call the database with equivalent server-side filters, sort, range, and return:
+    - data for the current page (or full dataset for non-paginated views like kanban).
+    - pageCount computed from the total count (ceil(total / pageSize)).
+
+## Server Query Rules (Supabase)
+- Always request count with select(..., { count: 'exact' }) when paginating.
+- Apply search with OR ilike across useful columns: `query.or('title.ilike.%term%,description.ilike.%term%')`.
+- Apply filters by iterating ColumnFiltersState (server-supported ids only):
+  - status → in('status', values)
+  - priority → in('priority', values)
+  - department_id → eq('department_id', id)
+  - Ignore client-only/computed filters (e.g., `urgency_tag`) at the server; compute client-side.
+- Apply sorting using the first sorting rule: `order(columnId, { ascending: !desc })`. Default to `created_at` desc.
+- Apply pagination using range((page-1)*pageSize, page*pageSize-1).
+- Respect RLS and vertical_key constraints as defined by RBAC policies.
+
+## View-specific Fetching
+- Table/List views: fetch a single page (use range + count).
+- Kanban (or other fully visual views): fetch without pagination (no range). Do not render pagination UI for these views.
+
+## UI/UX Requirements
+- Use shared `DataTable` wrapper with:
+  - toolbar search input wired to onSearchChange,
+  - faceted filters mapped to ColumnFiltersState and server filters,
+  - `DataTablePagination` wired to table state,
+  - column header sort triggers calling TanStack’s sort on the right column id.
+- If a filter cannot be represented server-side (e.g., derived tags), apply it client-side after fetch.
+- Never mix client-side built-in TanStack pagination with server pagination; with manualPagination, you must return only the page’s rows from the server.
+
+## Tasks Module Application
+- `src/app/tasks/page.tsx` uses server-side pagination/sorting/filtering for table/list, and unpaginated fetch for kanban. `pageCount` is computed from Supabase `count`.
+- `urgency_tag` is computed client-side and filtered client-side.
+
+## Checklist (Every Data List)
+- TanStack Table v8 with manual* flags enabled.
+- Pagination buttons move pageIndex and trigger a refetch.
+- Sorting toggles reflect server ordering.
+- Filters reflect server filters (client-only filters allowed).
+- Supabase query uses `{ count: 'exact' }` and `.range(...)` for pages.
+- Search uses `.or(title.ilike...,description.ilike...)`.
+- No pagination UI on non-paginated views (e.g., kanban).
+
+

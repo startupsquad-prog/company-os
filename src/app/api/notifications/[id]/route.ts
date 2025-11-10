@@ -4,29 +4,23 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { getClerkUserId } from '@/lib/auth/clerk'
 import { markAsRead, deleteNotification } from '@/lib/notifications/notifications'
 
 /**
  * PATCH /api/notifications/[id]
  * Mark a notification as read
  */
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await createServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const userId = await getClerkUserId()
 
-    if (!user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id } = await params
-    const notification = await markAsRead(id, user.id)
+    const notification = await markAsRead(id, userId)
 
     return NextResponse.json({ data: notification })
   } catch (error) {
@@ -42,22 +36,16 @@ export async function PATCH(
  * DELETE /api/notifications/[id]
  * Delete a notification (soft delete)
  */
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await createServerClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const userId = await getClerkUserId()
 
-    if (!user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { id } = await params
-    await deleteNotification(id, user.id)
+    await deleteNotification(id, userId)
 
     return NextResponse.json({ success: true })
   } catch (error) {
