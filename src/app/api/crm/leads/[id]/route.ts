@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getLeadById, updateLead, deleteLead } from '@/lib/db/leads'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const lead = await getLeadById(params.id)
+    const { id } = await params
+    const lead = await getLeadById(id)
 
     if (!lead) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
@@ -16,11 +17,12 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const body = await request.json()
 
-    const lead = await updateLead(params.id, body)
+    const lead = await updateLead(id, body)
 
     return NextResponse.json(lead)
   } catch (error: any) {
@@ -29,9 +31,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await deleteLead(params.id)
+    const { id } = await params
+    await deleteLead(id)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

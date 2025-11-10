@@ -159,11 +159,11 @@ export async function POST(request: NextRequest) {
       created_by: body.created_by,
     }
 
-    const { data: lead, error } = await supabase
+    const { data: lead, error } = await ((supabase as any)
       .from('leads')
       .insert(leadData)
       .select()
-      .single()
+      .single())
 
     if (error) {
       throw new Error(`Failed to create lead: ${error.message}`)

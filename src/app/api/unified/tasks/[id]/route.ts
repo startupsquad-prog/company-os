@@ -13,12 +13,12 @@ export async function GET(
     const { id } = await params
     const supabase = getUnifiedClient()
 
-    const { data: task, error } = await supabase
+    const { data: task, error } = await ((supabase as any)
       .from('tasks')
       .select('*')
       .eq('id', id)
       .is('deleted_at', null)
-      .single()
+      .single())
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -27,35 +27,37 @@ export async function GET(
       throw new Error(`Failed to fetch task: ${error.message}`)
     }
 
+    const taskTyped = task as any
+
     // Fetch related data separately (PostgREST can't resolve cross-schema foreign keys)
     const [assigneesResult, departmentResult, createdByResult, updatedByResult] = await Promise.all([
       // Fetch assignees
-      supabase
+      (supabase as any)
         .from('task_assignees')
         .select('*')
         .eq('task_id', id),
       // Fetch department
-      task.department_id
-        ? supabase
+      taskTyped.department_id
+        ? (supabase as any)
             .from('departments')
             .select('id, name')
-            .eq('id', task.department_id)
+            .eq('id', taskTyped.department_id)
             .single()
         : Promise.resolve({ data: null }),
       // Fetch created_by profile
-      task.created_by
-        ? supabase
+      taskTyped.created_by
+        ? (supabase as any)
             .from('profiles')
             .select('id, first_name, last_name, email, avatar_url')
-            .eq('id', task.created_by)
+            .eq('id', taskTyped.created_by)
             .single()
         : Promise.resolve({ data: null }),
       // Fetch updated_by profile
-      task.updated_by
-        ? supabase
+      taskTyped.updated_by
+        ? (supabase as any)
             .from('profiles')
             .select('id, first_name, last_name, email, avatar_url')
-            .eq('id', task.updated_by)
+            .eq('id', taskTyped.updated_by)
             .single()
         : Promise.resolve({ data: null }),
     ])
@@ -80,7 +82,7 @@ export async function GET(
 
     return NextResponse.json({
       data: {
-        ...task,
+        ...taskTyped,
         department: departmentResult.data,
         assignees: assigneesWithProfiles,
         created_by_profile: createdByResult.data,

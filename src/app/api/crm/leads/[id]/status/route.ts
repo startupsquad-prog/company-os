@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { updateLeadStatus } from '@/lib/db/leads'
 import type { UpdateLeadStatusInput } from '@/lib/types/leads'
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const body: Omit<UpdateLeadStatusInput, 'lead_id'> = await request.json()
 
     const lead = await updateLeadStatus({
-      lead_id: params.id,
+      lead_id: id,
       ...body,
     })
 

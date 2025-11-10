@@ -28,9 +28,9 @@ if (!process.env.OPENROUTER_API_KEY) {
  * - Streams AI responses in real-time
  * - Uses agent-specific system prompts and settings
  */
-export async function POST(req: NextRequest, { params }: { params: { agentId: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ agentId: string }> }) {
   const startTime = Date.now()
-  const agentId = params.agentId
+  const { agentId } = await params
 
   console.log('🚀 [Chatflow API] POST request for agent:', agentId)
 
@@ -100,6 +100,9 @@ export async function POST(req: NextRequest, { params }: { params: { agentId: st
         content: content,
       }
     })
+
+    // Create Supabase client
+    const supabase = await createServerClient()
 
     // Fetch the specific agent
     const { data: agentData, error: agentError } = await supabase

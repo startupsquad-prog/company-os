@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getClerkUserId } from '@/lib/auth/clerk'
 import { getUserNotifications, createNotification } from '@/lib/notifications/notifications'
-import type { NotificationInsert } from '@/lib/notifications/notification-types'
+import type { NotificationInsert, NotificationType, EntityType } from '@/lib/notifications/notification-types'
 
 /**
  * GET /api/notifications
@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
 
     const filters = {
       read: read === 'true' ? true : read === 'false' ? false : undefined,
-      type: type || undefined,
-      entity_type: entityType || undefined,
+      type: (type as NotificationType) || undefined,
+      entity_type: (entityType as EntityType) || undefined,
       limit,
       offset,
     }

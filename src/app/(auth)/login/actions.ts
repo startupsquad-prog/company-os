@@ -37,7 +37,7 @@ export async function signInWithPassword(email: string, password: string): Promi
 
     // Ensure profile exists and assign default role if needed
     try {
-      await supabase.rpc('ensure_profile', {
+      await (supabase.rpc as any)('ensure_profile', {
         p_user_id: data.user.id,
         p_email: email,
       })

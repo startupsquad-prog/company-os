@@ -28,10 +28,11 @@ export async function GET(request: NextRequest) {
       if (from) tasksQuery.gte('created_at', from)
       if (to) tasksQuery.lte('created_at', to)
       const { data: tasks, count: tasksCount } = await tasksQuery
+      const tasksTyped = tasks as any
 
-      const tasksCompleted = tasks?.filter((t) => t.status === 'completed').length || 0
+      const tasksCompleted = tasksTyped?.filter((t: any) => t.status === 'completed').length || 0
       const now = new Date().toISOString()
-      const tasksOverdue = tasks?.filter((t) => t.due_date && t.due_date < now && t.status !== 'completed').length || 0
+      const tasksOverdue = tasksTyped?.filter((t: any) => t.due_date && t.due_date < now && t.status !== 'completed').length || 0
 
       // Calculate trend (compare with previous period)
       const prevPeriodStart = subDays(dateFrom, Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)))
@@ -48,13 +49,14 @@ export async function GET(request: NextRequest) {
       if (from) leadsQuery.gte('created_at', from)
       if (to) leadsQuery.lte('created_at', to)
       const { data: leads, count: leadsCount } = await leadsQuery
+      const leadsTyped = leads as any
 
-      const leadsNew = leads?.filter((l) => {
+      const leadsNew = leadsTyped?.filter((l: any) => {
         const created = new Date(l.created_at)
         const daysDiff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)
         return daysDiff <= 7
       }).length || 0
-      const leadsConverted = leads?.filter((l) => l.status === 'converted' || l.status === 'won').length || 0
+      const leadsConverted = leadsTyped?.filter((l: any) => l.status === 'converted' || l.status === 'won').length || 0
 
       const { count: prevLeadsCount } = await supabase
         .from('leads')
@@ -69,12 +71,13 @@ export async function GET(request: NextRequest) {
       if (from) ordersQuery.gte('created_at', from)
       if (to) ordersQuery.lte('created_at', to)
       const { data: orders, count: ordersCount } = await ordersQuery
+      const ordersTyped = orders as any
 
-      const ordersPending = orders?.filter((o) => o.status === 'pending' || o.status === 'processing').length || 0
-      const ordersCompleted = orders?.filter((o) => o.status === 'completed' || o.status === 'delivered').length || 0
+      const ordersPending = ordersTyped?.filter((o: any) => o.status === 'pending' || o.status === 'processing').length || 0
+      const ordersCompleted = ordersTyped?.filter((o: any) => o.status === 'completed' || o.status === 'delivered').length || 0
 
       // Calculate revenue from order_items
-      const orderIds = orders?.map((o) => o.id) || []
+      const orderIds = ordersTyped?.map((o: any) => o.id) || []
       let revenue = 0
       if (orderIds.length > 0) {
         const { data: orderItems } = await supabase
@@ -82,7 +85,7 @@ export async function GET(request: NextRequest) {
           .select('price, quantity')
           .in('order_id', orderIds)
           .is('deleted_at', null)
-        revenue = orderItems?.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 0), 0) || 0
+        revenue = (orderItems as any)?.reduce((sum: number, item: any) => sum + (Number(item.price) || 0) * (item.quantity || 0), 0) || 0
       }
 
       const { count: prevOrdersCount } = await supabase
@@ -101,8 +104,9 @@ export async function GET(request: NextRequest) {
       if (from) applicationsQuery.gte('created_at', from)
       if (to) applicationsQuery.lte('created_at', to)
       const { data: applications, count: applicationsCount } = await applicationsQuery
+      const applicationsTyped = applications as any
 
-      const applicationsNew = applications?.filter((a) => {
+      const applicationsNew = applicationsTyped?.filter((a: any) => {
         const created = new Date(a.created_at)
         const daysDiff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)
         return daysDiff <= 7
@@ -154,22 +158,22 @@ export async function GET(request: NextRequest) {
         const dayStart = startOfDay(date).getTime()
         const dayEnd = endOfDay(date).getTime()
 
-        const dayTasks = (tasksTrendData.data || []).filter((t) => {
+        const dayTasks = ((tasksTrendData.data as any) || []).filter((t: any) => {
           const created = new Date(t.created_at).getTime()
           return created >= dayStart && created <= dayEnd
         }).length
 
-        const dayLeads = (leadsTrendData.data || []).filter((l) => {
+        const dayLeads = ((leadsTrendData.data as any) || []).filter((l: any) => {
           const created = new Date(l.created_at).getTime()
           return created >= dayStart && created <= dayEnd
         }).length
 
-        const dayOrders = (ordersTrendData.data || []).filter((o) => {
+        const dayOrders = ((ordersTrendData.data as any) || []).filter((o: any) => {
           const created = new Date(o.created_at).getTime()
           return created >= dayStart && created <= dayEnd
         }).length
 
-        const dayApplications = (applicationsTrendData.data || []).filter((a) => {
+        const dayApplications = ((applicationsTrendData.data as any) || []).filter((a: any) => {
           const created = new Date(a.created_at).getTime()
           return created >= dayStart && created <= dayEnd
         }).length
@@ -192,11 +196,11 @@ export async function GET(request: NextRequest) {
       ]
 
       // Status Overview
-      const taskStatusCounts = tasks?.reduce((acc: any, task: any) => {
+      const taskStatusCounts = tasksTyped?.reduce((acc: any, task: any) => {
         acc[task.status] = (acc[task.status] || 0) + 1
         return acc
       }, {}) || {}
-      const leadStatusCounts = leads?.reduce((acc: any, lead: any) => {
+      const leadStatusCounts = leadsTyped?.reduce((acc: any, lead: any) => {
         acc[lead.status] = (acc[lead.status] || 0) + 1
         return acc
       }, {}) || {}
@@ -219,20 +223,21 @@ export async function GET(request: NextRequest) {
         .limit(15)
 
       // Get user names for activities
-      const userIds = [...new Set(recentActivity?.map((a) => a.created_by).filter(Boolean) || [])]
+      const recentActivityTyped = recentActivity as any
+      const userIds = [...new Set(recentActivityTyped?.map((a: any) => a.created_by).filter(Boolean) || [])]
       let profilesMap: Record<string, any> = {}
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, user_id, first_name, last_name')
           .in('user_id', userIds)
-        profilesMap = (profiles || []).reduce((acc, p) => {
+        profilesMap = ((profiles as any) || []).reduce((acc: any, p: any) => {
           acc[p.user_id] = p
           return acc
         }, {} as Record<string, any>)
       }
 
-      const recentActivityWithNames = (recentActivity || []).map((activity) => ({
+      const recentActivityWithNames = (recentActivityTyped || []).map((activity: any) => ({
         ...activity,
         created_by_name: activity.created_by
           ? `${profilesMap[activity.created_by]?.first_name || ''} ${profilesMap[activity.created_by]?.last_name || ''}`.trim() || 'Unknown'
@@ -257,14 +262,15 @@ export async function GET(request: NextRequest) {
       if (from) leadsQuery.gte('created_at', from)
       if (to) leadsQuery.lte('created_at', to)
       const { data: leads } = await leadsQuery
+      const leadsSalesTyped = leads as any
 
-      const leadsNew = leads?.filter((l) => {
+      const leadsNew = leadsSalesTyped?.filter((l: any) => {
         const created = new Date(l.created_at)
         const daysDiff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)
         return daysDiff <= 7
       }).length || 0
-      const leadsConverted = leads?.filter((l) => l.status === 'converted' || l.status === 'won').length || 0
-      const leadsValue = leads?.reduce((sum, l) => sum + (Number(l.value) || 0), 0) || 0
+      const leadsConverted = leadsSalesTyped?.filter((l: any) => l.status === 'converted' || l.status === 'won').length || 0
+      const leadsValue = leadsSalesTyped?.reduce((sum: number, l: any) => sum + (Number(l.value) || 0), 0) || 0
 
       // Opportunities
       const opportunitiesQuery = supabase
@@ -274,10 +280,11 @@ export async function GET(request: NextRequest) {
       if (from) opportunitiesQuery.gte('created_at', from)
       if (to) opportunitiesQuery.lte('created_at', to)
       const { data: opportunities, count: opportunitiesCount } = await opportunitiesQuery
+      const opportunitiesTyped = opportunities as any
 
-      const opportunitiesOpen = opportunities?.filter((o) => o.stage_id).length || 0
+      const opportunitiesOpen = opportunitiesTyped?.filter((o: any) => o.stage_id).length || 0
       const opportunitiesWon = 0 // Would need to check stage name
-      const opportunitiesValue = opportunities?.reduce((sum, o) => sum + (Number(o.value) || 0), 0) || 0
+      const opportunitiesValue = opportunitiesTyped?.reduce((sum: number, o: any) => sum + (Number(o.value) || 0), 0) || 0
 
       // Quotations (CRM)
       const quotationsQuery = supabase
@@ -287,23 +294,25 @@ export async function GET(request: NextRequest) {
       if (from) quotationsQuery.gte('created_at', from)
       if (to) quotationsQuery.lte('created_at', to)
       const { data: quotations, count: quotationsCount } = await quotationsQuery
+      const quotationsSalesTyped = quotations as any
 
-      const quotationsSent = quotations?.filter((q) => q.status === 'sent' || q.status === 'viewed').length || 0
-      const quotationsApproved = quotations?.filter((q) => q.status === 'accepted').length || 0
-      const quotationsValue = quotations?.reduce((sum, q) => sum + (Number(q.total_amount) || 0), 0) || 0
+      const quotationsSent = quotationsSalesTyped?.filter((q: any) => q.status === 'sent' || q.status === 'viewed').length || 0
+      const quotationsApproved = quotationsSalesTyped?.filter((q: any) => q.status === 'accepted').length || 0
+      const quotationsValue = quotationsSalesTyped?.reduce((sum: number, q: any) => sum + (Number(q.total_amount) || 0), 0) || 0
 
       // Calls
       const callsQuery = supabase.from('calls').select('id, status, duration, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) callsQuery.gte('created_at', from)
       if (to) callsQuery.lte('created_at', to)
       const { data: calls, count: callsCount } = await callsQuery
+      const callsTyped = calls as any
 
-      const callsCompleted = calls?.filter((c) => c.status === 'completed').length || 0
-      const callsScheduled = calls?.filter((c) => c.status === 'scheduled').length || 0
-      const avgCallDuration = calls && calls.length > 0 ? calls.reduce((sum, c) => sum + (Number(c.duration) || 0), 0) / calls.length : 0
+      const callsCompleted = callsTyped?.filter((c: any) => c.status === 'completed').length || 0
+      const callsScheduled = callsTyped?.filter((c: any) => c.status === 'scheduled').length || 0
+      const avgCallDuration = callsTyped && callsTyped.length > 0 ? callsTyped.reduce((sum: number, c: any) => sum + (Number(c.duration) || 0), 0) / callsTyped.length : 0
 
       // Lead Source Distribution
-      const leadSourceCounts = leads?.reduce((acc: any, lead: any) => {
+      const leadSourceCounts = leadsSalesTyped?.reduce((acc: any, lead: any) => {
         const source = lead.source || 'other'
         acc[source] = (acc[source] || 0) + 1
         return acc
@@ -331,7 +340,7 @@ export async function GET(request: NextRequest) {
         const dayStart = startOfDay(date).getTime()
         const dayEnd = endOfDay(date).getTime()
 
-        const dayRevenue = (allQuotations || []).reduce((sum, q) => {
+        const dayRevenue = ((allQuotations as any) || []).reduce((sum: number, q: any) => {
           const created = new Date(q.created_at).getTime()
           if (created >= dayStart && created <= dayEnd) {
             return sum + (Number(q.total_amount) || 0)
@@ -371,12 +380,13 @@ export async function GET(request: NextRequest) {
       if (from) ordersQuery.gte('created_at', from)
       if (to) ordersQuery.lte('created_at', to)
       const { data: orders, count: ordersCount } = await ordersQuery
+      const ordersOpsTyped = orders as any
 
-      const ordersPending = orders?.filter((o) => o.status === 'pending' || o.status === 'processing').length || 0
-      const ordersCompleted = orders?.filter((o) => o.status === 'completed' || o.status === 'delivered').length || 0
+      const ordersPending = ordersOpsTyped?.filter((o: any) => o.status === 'pending' || o.status === 'processing').length || 0
+      const ordersCompleted = ordersOpsTyped?.filter((o: any) => o.status === 'completed' || o.status === 'delivered').length || 0
 
       // Calculate revenue
-      const orderIds = orders?.map((o) => o.id) || []
+      const orderIds = ordersOpsTyped?.map((o: any) => o.id) || []
       let revenue = 0
       if (orderIds.length > 0) {
         const { data: orderItems } = await supabase
@@ -384,7 +394,7 @@ export async function GET(request: NextRequest) {
           .select('price, quantity')
           .in('order_id', orderIds)
           .is('deleted_at', null)
-        revenue = orderItems?.reduce((sum, item) => sum + (Number(item.price) || 0) * (item.quantity || 0), 0) || 0
+        revenue = (orderItems as any)?.reduce((sum: number, item: any) => sum + (Number(item.price) || 0) * (item.quantity || 0), 0) || 0
       }
 
       // Quotations (Ops - all types)
@@ -395,13 +405,14 @@ export async function GET(request: NextRequest) {
       if (from) quotationsQuery.gte('created_at', from)
       if (to) quotationsQuery.lte('created_at', to)
       const { data: quotations, count: quotationsCount } = await quotationsQuery
+      const quotationsOpsTyped = quotations as any
 
-      const quotationsPending = quotations?.filter((q) => q.status === 'draft' || q.status === 'sent').length || 0
-      const quotationsApproved = quotations?.filter((q) => q.status === 'approved').length || 0
-      const quotationsValue = quotations?.reduce((sum, q) => sum + (Number(q.amount) || 0), 0) || 0
+      const quotationsPending = quotationsOpsTyped?.filter((q: any) => q.status === 'draft' || q.status === 'sent').length || 0
+      const quotationsApproved = quotationsOpsTyped?.filter((q: any) => q.status === 'approved').length || 0
+      const quotationsValue = quotationsOpsTyped?.reduce((sum: number, q: any) => sum + (Number(q.amount) || 0), 0) || 0
 
       // Quotation Types Breakdown
-      const quotationTypeCounts = quotations?.reduce((acc: any, q: any) => {
+      const quotationTypeCounts = quotationsOpsTyped?.reduce((acc: any, q: any) => {
         const type = q.quotation_type || 'unknown'
         acc[type] = (acc[type] || 0) + 1
         return acc
@@ -413,13 +424,14 @@ export async function GET(request: NextRequest) {
       if (from) shipmentsQuery.gte('created_at', from)
       if (to) shipmentsQuery.lte('created_at', to)
       const { data: shipments, count: shipmentsCount } = await shipmentsQuery
+      const shipmentsTyped = shipments as any
 
-      const shipmentsInTransit = shipments?.filter((s) => s.status === 'in_transit').length || 0
-      const shipmentsDelivered = shipments?.filter((s) => s.status === 'delivered').length || 0
-      const shipmentsPending = shipments?.filter((s) => s.status === 'pending').length || 0
+      const shipmentsInTransit = shipmentsTyped?.filter((s: any) => s.status === 'in_transit').length || 0
+      const shipmentsDelivered = shipmentsTyped?.filter((s: any) => s.status === 'delivered').length || 0
+      const shipmentsPending = shipmentsTyped?.filter((s: any) => s.status === 'pending').length || 0
 
       // Shipment Types
-      const shipmentTypeCounts = shipments?.reduce((acc: any, s: any) => {
+      const shipmentTypeCounts = shipmentsTyped?.reduce((acc: any, s: any) => {
         const type = s.shipment_type || 'unknown'
         acc[type] = (acc[type] || 0) + 1
         return acc
@@ -431,13 +443,14 @@ export async function GET(request: NextRequest) {
       if (from) paymentsQuery.gte('created_at', from)
       if (to) paymentsQuery.lte('created_at', to)
       const { data: payments, count: paymentsCount } = await paymentsQuery
+      const paymentsTyped = payments as any
 
-      const paymentsPending = payments?.filter((p) => p.status === 'pending').length || 0
-      const paymentsCompleted = payments?.filter((p) => p.status === 'completed' || p.status === 'paid').length || 0
-      const paymentsAmount = payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0
+      const paymentsPending = paymentsTyped?.filter((p: any) => p.status === 'pending').length || 0
+      const paymentsCompleted = paymentsTyped?.filter((p: any) => p.status === 'completed' || p.status === 'paid').length || 0
+      const paymentsAmount = paymentsTyped?.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0) || 0
 
       // Order Status Distribution
-      const orderStatusCounts = orders?.reduce((acc: any, order: any) => {
+      const orderStatusCounts = ordersOpsTyped?.reduce((acc: any, order: any) => {
         acc[order.status] = (acc[order.status] || 0) + 1
         return acc
       }, {}) || {}
@@ -463,7 +476,7 @@ export async function GET(request: NextRequest) {
         const dayStart = startOfDay(date).getTime()
         const dayEnd = endOfDay(date).getTime()
 
-        const dayShipments = (allShipments || []).filter((s) => {
+        const dayShipments = ((allShipments as any) || []).filter((s: any) => {
           const created = new Date(s.created_at).getTime()
           return created >= dayStart && created <= dayEnd
         })
@@ -533,9 +546,10 @@ export async function GET(request: NextRequest) {
       if (from) {
         // Filter by date range if provided
       }
+      const attendanceSessionsTyped = attendanceSessions as any
 
-      const attendancePresent = attendanceSessions?.filter((a) => a.status === 'present' || a.status === 'checked_in').length || 0
-      const attendanceAbsent = attendanceSessions?.filter((a) => a.status === 'absent').length || 0
+      const attendancePresent = attendanceSessionsTyped?.filter((a: any) => a.status === 'present' || a.status === 'checked_in').length || 0
+      const attendanceAbsent = attendanceSessionsTyped?.filter((a: any) => a.status === 'absent').length || 0
       const attendanceLate = 0 // Would need to check check-in time
 
       // Leave requests
@@ -546,13 +560,14 @@ export async function GET(request: NextRequest) {
       if (from) leaveRequestsQuery.gte('created_at', from)
       if (to) leaveRequestsQuery.lte('created_at', to)
       const { data: leaveRequests, count: leaveRequestsCount } = await leaveRequestsQuery
+      const leaveRequestsTyped = leaveRequests as any
 
-      const leaveRequestsPending = leaveRequests?.filter((l) => l.status === 'pending').length || 0
-      const leaveRequestsApproved = leaveRequests?.filter((l) => l.status === 'approved').length || 0
-      const leaveRequestsRejected = leaveRequests?.filter((l) => l.status === 'rejected').length || 0
+      const leaveRequestsPending = leaveRequestsTyped?.filter((l: any) => l.status === 'pending').length || 0
+      const leaveRequestsApproved = leaveRequestsTyped?.filter((l: any) => l.status === 'approved').length || 0
+      const leaveRequestsRejected = leaveRequestsTyped?.filter((l: any) => l.status === 'rejected').length || 0
 
       // Leave Types Distribution
-      const leaveTypeCounts = leaveRequests?.reduce((acc: any, l: any) => {
+      const leaveTypeCounts = leaveRequestsTyped?.reduce((acc: any, l: any) => {
         const type = l.leave_type || 'other'
         acc[type] = (acc[type] || 0) + 1
         return acc
@@ -579,13 +594,13 @@ export async function GET(request: NextRequest) {
         const dayStart = startOfDay(date).getTime()
         const dayEnd = endOfDay(date).getTime()
 
-        const daySessions = (allSessions || []).filter((s) => {
+        const daySessions = ((allSessions as any) || []).filter((s: any) => {
           const created = new Date(s.created_at).getTime()
           return created >= dayStart && created <= dayEnd
         })
 
-        const present = daySessions.filter((s) => s.status === 'present' || s.status === 'checked_in').length
-        const absent = daySessions.filter((s) => s.status === 'absent').length
+        const present = daySessions.filter((s: any) => s.status === 'present' || s.status === 'checked_in').length
+        const absent = daySessions.filter((s: any) => s.status === 'absent').length
         const late = 0 // Would need time-based calculation
 
         attendanceTrendData.push({
@@ -632,8 +647,9 @@ export async function GET(request: NextRequest) {
       if (from) companiesQuery.gte('created_at', from)
       if (to) companiesQuery.lte('created_at', to)
       const { data: companies, count: companiesCount } = await companiesQuery
+      const companiesTyped = companies as any
 
-      const companiesNew = companies?.filter((c) => {
+      const companiesNew = companiesTyped?.filter((c: any) => {
         const created = new Date(c.created_at)
         const daysDiff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)
         return daysDiff <= 30
@@ -645,8 +661,9 @@ export async function GET(request: NextRequest) {
       if (from) contactsQuery.gte('created_at', from)
       if (to) contactsQuery.lte('created_at', to)
       const { data: contacts, count: contactsCount } = await contactsQuery
+      const contactsTyped = contacts as any
 
-      const contactsNew = contacts?.filter((c) => {
+      const contactsNew = contactsTyped?.filter((c: any) => {
         const created = new Date(c.created_at)
         const daysDiff = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24)
         return daysDiff <= 30
@@ -658,9 +675,10 @@ export async function GET(request: NextRequest) {
       if (from) leadsQuery.gte('created_at', from)
       if (to) leadsQuery.lte('created_at', to)
       const { data: leads, count: leadsCount } = await leadsQuery
+      const leadsClientsTyped = leads as any
 
-      const leadsActive = leads?.filter((l) => l.status !== 'closed' && l.status !== 'lost').length || 0
-      const leadsConverted = leads?.filter((l) => l.status === 'converted' || l.status === 'won').length || 0
+      const leadsActive = leadsClientsTyped?.filter((l: any) => l.status !== 'closed' && l.status !== 'lost').length || 0
+      const leadsConverted = leadsClientsTyped?.filter((l: any) => l.status === 'converted' || l.status === 'won').length || 0
 
       // Client Growth Trend - OPTIMIZED
       const daysToShow = Math.min(30, Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)))
@@ -690,12 +708,12 @@ export async function GET(request: NextRequest) {
         const dayStart = startOfDay(date).getTime()
         const dayEnd = endOfDay(date).getTime()
 
-        const dayCompanies = (companiesData.data || []).filter((c) => {
+        const dayCompanies = ((companiesData.data as any) || []).filter((c: any) => {
           const created = new Date(c.created_at).getTime()
           return created >= dayStart && created <= dayEnd
         }).length
 
-        const dayContacts = (contactsData.data || []).filter((c) => {
+        const dayContacts = ((contactsData.data as any) || []).filter((c: any) => {
           const created = new Date(c.created_at).getTime()
           return created >= dayStart && created <= dayEnd
         }).length

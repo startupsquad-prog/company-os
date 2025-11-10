@@ -133,6 +133,9 @@ export async function POST(req: NextRequest) {
       })),
     })
 
+    // Create Supabase client
+    const supabase = await createServerClient()
+
     // Fetch the AI agent (specific agent or default)
     let agentQuery = supabase
       .schema('core')
