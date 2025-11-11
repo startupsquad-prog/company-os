@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedClient } from '@/lib/db/unified-client'
+import { fromCore } from '@/lib/db/schema-helpers'
 
 /**
  * GET /api/unified/employees
@@ -8,7 +8,6 @@ import { getUnifiedClient } from '@/lib/db/unified-client'
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const supabase = getUnifiedClient()
 
     // Parse query parameters
     const page = parseInt(searchParams.get('page') || '1')
@@ -23,10 +22,8 @@ export async function GET(request: NextRequest) {
       filters.status = statusFilter.split(',')
     }
 
-    // Build query - fetch employees only (fetch related data separately)
-    // PostgREST can't resolve foreign keys across schemas, so we fetch separately
-    let query = supabase
-      .from('employees')
+    // Build query using schema-aware helper
+    let query = fromCore('employees')
       .select('*', { count: 'exact' })
       .is('deleted_at', null)
 
@@ -59,8 +56,7 @@ export async function GET(request: NextRequest) {
     // Fetch related profiles separately
     const profileIds = [...new Set((employees || []).map((e: any) => e.profile_id).filter(Boolean))]
     const { data: profiles } = profileIds.length > 0
-      ? await supabase
-          .from('profiles')
+      ? await fromCore('profiles')
           .select('id, first_name, last_name, email, phone, avatar_url, department_id')
           .in('id', profileIds)
       : { data: [] }
@@ -68,8 +64,7 @@ export async function GET(request: NextRequest) {
     // Fetch departments for profiles
     const departmentIds = [...new Set((profiles || []).map((p: any) => p.department_id).filter(Boolean))]
     const { data: departments } = departmentIds.length > 0
-      ? await supabase
-          .from('departments')
+      ? await fromCore('departments')
           .select('id, name')
           .in('id', departmentIds)
       : { data: [] }

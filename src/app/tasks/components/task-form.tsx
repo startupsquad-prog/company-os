@@ -35,6 +35,7 @@ import {
   Link2,
   Plus as PlusIcon,
   Trash2,
+  FolderKanban,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -69,6 +70,7 @@ export function TaskForm({
     status: undefined,
     department_id: undefined,
     vertical_key: '',
+    project_id: undefined,
     due_date: undefined,
     estimated_duration: undefined,
     important_links: [],
@@ -87,6 +89,10 @@ export function TaskForm({
     Array<{ id: string; first_name: string | null; last_name: string | null; email: string }>
   >([])
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([])
+  const [availableProjects, setAvailableProjects] = useState<
+    Array<{ id: string; name: string }>
+  >([])
+  const [projectOpen, setProjectOpen] = useState(false)
 
   // Priority icon colors
   const priorityIcons: Record<string, { icon: typeof Flag; color: string }> = {
@@ -106,7 +112,8 @@ export function TaskForm({
     const fetchProfiles = async () => {
       try {
         const supabase = createClient()
-        const { data: profiles } = await supabase
+        const { data: profiles } = await (supabase as any)
+          .schema('core')
           .from('profiles')
           .select('id, first_name, last_name, email')
           .is('deleted_at', null)
@@ -120,8 +127,27 @@ export function TaskForm({
       }
     }
 
+    // Fetch available projects
+    const fetchProjects = async () => {
+      try {
+        const response = await fetch('/api/unified/projects?page=1&pageSize=100&view=grid')
+        if (response.ok) {
+          const result = await response.json()
+          setAvailableProjects(
+            (result.data || []).map((p: any) => ({
+              id: p.id,
+              name: p.name,
+            }))
+          )
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error)
+      }
+    }
+
     if (open) {
       fetchProfiles()
+      fetchProjects()
     }
   }, [open])
 
@@ -134,6 +160,7 @@ export function TaskForm({
         status: task.status || undefined,
         department_id: task.department_id || undefined,
         vertical_key: task.vertical_key || '',
+        project_id: (task as any).project_id || undefined,
         due_date: task.due_date ? new Date(task.due_date) : undefined,
         estimated_duration: (task as any).estimated_duration || undefined,
         important_links: (task as any).important_links || [],
@@ -148,6 +175,7 @@ export function TaskForm({
         status: defaultStatus || undefined,
         department_id: undefined,
         vertical_key: '',
+        project_id: undefined,
         due_date: undefined,
         estimated_duration: undefined,
         important_links: [],
@@ -341,8 +369,8 @@ export function TaskForm({
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <DatePicker
-                        value={formData.due_date}
-                        onChange={(date) => {
+                        date={formData.due_date}
+                        onDateChange={(date) => {
                           setFormData({ ...formData, due_date: date })
                           setDateOpen(false)
                         }}
@@ -458,136 +486,192 @@ export function TaskForm({
                   </Popover>
                 </div>
 
-                {/* Estimated Duration */}
+                {/* Project */}
                 <div className="space-y-2">
-                  <Label>Estimated Duration</Label>
-                  <Popover open={durationOpen} onOpenChange={setDurationOpen}>
+                  <Label>Project</Label>
+                  <Popover open={projectOpen} onOpenChange={setProjectOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         type="button"
                         variant="outline"
                         className="w-full justify-start text-left font-normal"
                       >
-                        <Clock className="mr-2 h-4 w-4" />
-                        {formData.estimated_duration ? (
-                          `${formData.estimated_duration < 60 ? `${formData.estimated_duration}m` : `${Math.floor(formData.estimated_duration / 60)}h ${formData.estimated_duration % 60}m`}`
-                        ) : (
-                          <span>Set duration</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-64 p-4" align="start">
-                      <div className="space-y-2">
-                        <Label>Duration (minutes)</Label>
-                        <Input
-                          type="number"
-                          placeholder="e.g., 120"
-                          value={formData.estimated_duration || ''}
-                          onChange={(e) => {
-                            const value = e.target.value ? parseInt(e.target.value) : undefined
-                            setFormData({ ...formData, estimated_duration: value })
-                          }}
-                          min="1"
-                        />
-                        <div className="text-xs text-muted-foreground">
-                          Common: 15m, 30m, 1h (60m), 2h (120m), 4h (240m)
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Important Links */}
-                <div className="space-y-2">
-                  <Label>Important Links</Label>
-                  <Popover open={linksOpen} onOpenChange={setLinksOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <Link2 className="mr-2 h-4 w-4" />
-                        {links.length > 0 ? (
+                        <FolderKanban className="mr-2 h-4 w-4" />
+                        {formData.project_id ? (
                           <span>
-                            {links.length} link{links.length > 1 ? 's' : ''}
+                            {availableProjects.find((p) => p.id === formData.project_id)?.name ||
+                              'Select project'}
                           </span>
                         ) : (
-                          <span>Add links</span>
+                          <span>Select project</span>
                         )}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-80 p-4" align="start">
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          <Label>URL</Label>
-                          <Input
-                            placeholder="https://..."
-                            value={newLinkUrl}
-                            onChange={(e) => setNewLinkUrl(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                addLink()
-                              }
-                            }}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Label (optional)</Label>
-                          <Input
-                            placeholder="Link name"
-                            value={newLinkLabel}
-                            onChange={(e) => setNewLinkLabel(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                addLink()
-                              }
-                            }}
-                          />
-                        </div>
+                    <PopoverContent className="w-64 p-2" align="start">
+                      <div className="space-y-1 max-h-[300px] overflow-y-auto">
                         <Button
                           type="button"
-                          size="sm"
-                          onClick={addLink}
-                          disabled={!newLinkUrl.trim()}
-                          className="w-full"
+                          variant="ghost"
+                          className={cn('w-full justify-start', !formData.project_id && 'bg-accent')}
+                          onClick={() => {
+                            setFormData({ ...formData, project_id: undefined })
+                            setProjectOpen(false)
+                          }}
                         >
-                          <PlusIcon className="h-4 w-4 mr-2" />
-                          Add Link
+                          None
                         </Button>
-                        {links.length > 0 && (
-                          <div className="space-y-2 border-t pt-2">
-                            <Label className="text-xs">Links</Label>
-                            {links.map((link, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-center justify-between gap-2 p-2 bg-muted rounded"
-                              >
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium truncate">{link.label}</div>
-                                  <div className="text-xs text-muted-foreground truncate">
-                                    {link.url}
-                                  </div>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => removeLink(idx)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {availableProjects.map((project) => {
+                          const isSelected = formData.project_id === project.id
+                          return (
+                            <Button
+                              key={project.id}
+                              type="button"
+                              variant="ghost"
+                              className={cn('w-full justify-start', isSelected && 'bg-accent')}
+                              onClick={() => {
+                                setFormData({ ...formData, project_id: project.id })
+                                setProjectOpen(false)
+                              }}
+                            >
+                              {project.name}
+                            </Button>
+                          )
+                        })}
                       </div>
                     </PopoverContent>
                   </Popover>
                 </div>
+              </div>
+
+              {/* Estimated Duration - Full Width */}
+              <div className="space-y-2">
+                <Label>Estimated Duration</Label>
+                <Popover open={durationOpen} onOpenChange={setDurationOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Clock className="mr-2 h-4 w-4" />
+                      {formData.estimated_duration ? (
+                        `${formData.estimated_duration < 60 ? `${formData.estimated_duration}m` : `${Math.floor(formData.estimated_duration / 60)}h ${formData.estimated_duration % 60}m`}`
+                      ) : (
+                        <span>Set duration</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-4" align="start">
+                    <div className="space-y-2">
+                      <Label>Duration (minutes)</Label>
+                      <Input
+                        type="number"
+                        placeholder="e.g., 120"
+                        value={formData.estimated_duration || ''}
+                        onChange={(e) => {
+                          const value = e.target.value ? parseInt(e.target.value) : undefined
+                          setFormData({ ...formData, estimated_duration: value })
+                        }}
+                        min="1"
+                      />
+                      <div className="text-xs text-muted-foreground">
+                        Common: 15m, 30m, 1h (60m), 2h (120m), 4h (240m)
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Important Links */}
+              <div className="space-y-2">
+                <Label>Important Links</Label>
+                <Popover open={linksOpen} onOpenChange={setLinksOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Link2 className="mr-2 h-4 w-4" />
+                      {links.length > 0 ? (
+                        <span>
+                          {links.length} link{links.length > 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span>Add links</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-4" align="start">
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>URL</Label>
+                        <Input
+                          placeholder="https://..."
+                          value={newLinkUrl}
+                          onChange={(e) => setNewLinkUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              addLink()
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Label (optional)</Label>
+                        <Input
+                          placeholder="Link name"
+                          value={newLinkLabel}
+                          onChange={(e) => setNewLinkLabel(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              addLink()
+                            }
+                          }}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={addLink}
+                        disabled={!newLinkUrl.trim()}
+                        className="w-full"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Add Link
+                      </Button>
+                      {links.length > 0 && (
+                        <div className="space-y-2 border-t pt-2">
+                          <Label className="text-xs">Links</Label>
+                          {links.map((link, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between gap-2 p-2 bg-muted rounded"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">{link.label}</div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {link.url}
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0"
+                                onClick={() => removeLink(idx)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Description - Full Width */}

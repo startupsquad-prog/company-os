@@ -76,9 +76,10 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       }
 
       // Calculate unread count
-      const unreadCount = (notificationsData || []).filter((n) => !n.read_at).length
+      const notificationsDataTyped = (notificationsData || []) as any[]
+      const unreadCount = notificationsDataTyped.filter((n: any) => !n.read_at).length
 
-      setNotifications(notificationsData || [])
+      setNotifications(notificationsDataTyped)
       setUnreadCount(unreadCount)
       setTotal(count || 0)
     } catch (err) {
@@ -97,7 +98,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         }
 
         const supabase = createClient()
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('notifications')
           .update({ read_at: new Date().toISOString() })
           .eq('id', notificationId)
@@ -130,7 +131,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
       const supabase = createClient()
       // Use the RPC function for efficiency
-      const { error } = await supabase.rpc('mark_all_notifications_read', {
+      const { error } = await (supabase as any).rpc('mark_all_notifications_read', {
         p_user_id: clerkUser.id,
       })
 
@@ -157,7 +158,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
         const supabase = createClient()
         // Soft delete by setting deleted_at
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('notifications')
           .update({ deleted_at: new Date().toISOString() })
           .eq('id', notificationId)

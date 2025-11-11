@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { addComment } from '@/lib/db/tasks'
-import { createServerClient } from '@/lib/supabase/server'
+import { fromCommonUtil } from '@/lib/db/schema-helpers'
 
 /**
  * POST /api/tasks/[id]/comments
@@ -21,9 +21,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Verify task exists
-    const supabase = await createServerClient()
-    const { data: task, error: taskError } = await supabase
-      .from('tasks')
+    const { data: task, error: taskError } = await fromCommonUtil('tasks')
       .select('id')
       .eq('id', id)
       .is('deleted_at', null)

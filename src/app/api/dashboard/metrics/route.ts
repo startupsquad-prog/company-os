@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/client'
+import { fromCommonUtil, fromCore, fromCrm, fromOps, fromAts, fromHr } from '@/lib/db/schema-helpers'
 import { auth } from '@clerk/nextjs/server'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
 
@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const supabase = createClient()
     const searchParams = request.nextUrl.searchParams
     const from = searchParams.get('from')
     const to = searchParams.get('to')
@@ -24,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     if (tab === 'overview' || tab === 'all') {
       // Tasks metrics
-      const tasksQuery = supabase.from('tasks').select('id, status, due_date, created_at', { count: 'exact' }).is('deleted_at', null)
+      const tasksQuery = fromCommonUtil('tasks').select('id, status, due_date, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) tasksQuery.gte('created_at', from)
       if (to) tasksQuery.lte('created_at', to)
       const { data: tasks, count: tasksCount } = await tasksQuery
@@ -36,8 +35,7 @@ export async function GET(request: NextRequest) {
 
       // Calculate trend (compare with previous period)
       const prevPeriodStart = subDays(dateFrom, Math.ceil((dateTo.getTime() - dateFrom.getTime()) / (1000 * 60 * 60 * 24)))
-      const { count: prevTasksCount } = await supabase
-        .from('tasks')
+      const { count: prevTasksCount } = await fromCommonUtil('tasks')
         .select('id', { count: 'exact', head: true })
         .is('deleted_at', null)
         .gte('created_at', prevPeriodStart.toISOString())
@@ -45,7 +43,7 @@ export async function GET(request: NextRequest) {
       const tasksTrend = prevTasksCount && prevTasksCount > 0 ? ((tasksCount || 0 - prevTasksCount) / prevTasksCount) * 100 : 0
 
       // Leads metrics
-      const leadsQuery = supabase.from('leads').select('id, status, created_at', { count: 'exact' }).is('deleted_at', null)
+      const leadsQuery = fromCrm('leads').select('id, status, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) leadsQuery.gte('created_at', from)
       if (to) leadsQuery.lte('created_at', to)
       const { data: leads, count: leadsCount } = await leadsQuery
@@ -58,8 +56,7 @@ export async function GET(request: NextRequest) {
       }).length || 0
       const leadsConverted = leadsTyped?.filter((l: any) => l.status === 'converted' || l.status === 'won').length || 0
 
-      const { count: prevLeadsCount } = await supabase
-        .from('leads')
+      const { count: prevLeadsCount } = await fromCrm('leads')
         .select('id', { count: 'exact', head: true })
         .is('deleted_at', null)
         .gte('created_at', prevPeriodStart.toISOString())
@@ -67,7 +64,7 @@ export async function GET(request: NextRequest) {
       const leadsTrend = prevLeadsCount && prevLeadsCount > 0 ? ((leadsCount || 0 - prevLeadsCount) / prevLeadsCount) * 100 : 0
 
       // Orders metrics
-      const ordersQuery = supabase.from('orders').select('id, status, created_at', { count: 'exact' }).is('deleted_at', null)
+      const ordersQuery = fromOps('orders').select('id, status, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) ordersQuery.gte('created_at', from)
       if (to) ordersQuery.lte('created_at', to)
       const { data: orders, count: ordersCount } = await ordersQuery
@@ -80,16 +77,14 @@ export async function GET(request: NextRequest) {
       const orderIds = ordersTyped?.map((o: any) => o.id) || []
       let revenue = 0
       if (orderIds.length > 0) {
-        const { data: orderItems } = await supabase
-          .from('order_items')
+        const { data: orderItems } = await fromOps('order_items')
           .select('price, quantity')
           .in('order_id', orderIds)
           .is('deleted_at', null)
         revenue = (orderItems as any)?.reduce((sum: number, item: any) => sum + (Number(item.price) || 0) * (item.quantity || 0), 0) || 0
       }
 
-      const { count: prevOrdersCount } = await supabase
-        .from('orders')
+      const { count: prevOrdersCount } = await fromOps('orders')
         .select('id', { count: 'exact', head: true })
         .is('deleted_at', null)
         .gte('created_at', prevPeriodStart.toISOString())
@@ -97,8 +92,7 @@ export async function GET(request: NextRequest) {
       const ordersTrend = prevOrdersCount && prevOrdersCount > 0 ? ((ordersCount || 0 - prevOrdersCount) / prevOrdersCount) * 100 : 0
 
       // Applications metrics
-      const applicationsQuery = supabase
-        .from('applications')
+      const applicationsQuery = fromAts('applications')
         .select('id, created_at', { count: 'exact' })
         .is('deleted_at', null)
       if (from) applicationsQuery.gte('created_at', from)
@@ -113,7 +107,7 @@ export async function GET(request: NextRequest) {
       }).length || 0
 
       // Interviews count
-      const interviewsQuery = supabase.from('interviews').select('id', { count: 'exact', head: true }).is('deleted_at', null)
+      const interviewsQuery = fromAts('interviews').select('id', { count: 'exact', head: true }).is('deleted_at', null)
       if (from) interviewsQuery.gte('created_at', from)
       if (to) interviewsQuery.lte('created_at', to)
       const { count: interviewsCount } = await interviewsQuery
@@ -124,26 +118,22 @@ export async function GET(request: NextRequest) {
       
       // Fetch all data at once
       const [tasksTrendData, leadsTrendData, ordersTrendData, applicationsTrendData] = await Promise.all([
-        supabase
-          .from('tasks')
+        fromCommonUtil('tasks')
           .select('created_at')
           .is('deleted_at', null)
           .gte('created_at', startOfDay(trendStart).toISOString())
           .lte('created_at', endOfDay(dateTo).toISOString()),
-        supabase
-          .from('leads')
+        fromCrm('leads')
           .select('created_at')
           .is('deleted_at', null)
           .gte('created_at', startOfDay(trendStart).toISOString())
           .lte('created_at', endOfDay(dateTo).toISOString()),
-        supabase
-          .from('orders')
+        fromOps('orders')
           .select('created_at')
           .is('deleted_at', null)
           .gte('created_at', startOfDay(trendStart).toISOString())
           .lte('created_at', endOfDay(dateTo).toISOString()),
-        supabase
-          .from('applications')
+        fromAts('applications')
           .select('created_at')
           .is('deleted_at', null)
           .gte('created_at', startOfDay(trendStart).toISOString())
@@ -216,8 +206,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Recent Activity (from activity_events)
-      const { data: recentActivity } = await supabase
-        .from('activity_events')
+      const { data: recentActivity } = await fromCore('activity_events')
         .select('id, entity_type, action, created_at, created_by')
         .order('created_at', { ascending: false })
         .limit(15)
@@ -227,8 +216,7 @@ export async function GET(request: NextRequest) {
       const userIds = [...new Set(recentActivityTyped?.map((a: any) => a.created_by).filter(Boolean) || [])]
       let profilesMap: Record<string, any> = {}
       if (userIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('profiles')
+        const { data: profiles } = await fromCore('profiles')
           .select('id, user_id, first_name, last_name')
           .in('user_id', userIds)
         profilesMap = ((profiles as any) || []).reduce((acc: any, p: any) => {
@@ -258,7 +246,7 @@ export async function GET(request: NextRequest) {
 
     if (tab === 'sales' || tab === 'all') {
       // Sales metrics - enhanced with chart data
-      const leadsQuery = supabase.from('leads').select('id, status, value, created_at, source', { count: 'exact' }).is('deleted_at', null)
+      const leadsQuery = fromCrm('leads').select('id, status, value, created_at, source', { count: 'exact' }).is('deleted_at', null)
       if (from) leadsQuery.gte('created_at', from)
       if (to) leadsQuery.lte('created_at', to)
       const { data: leads } = await leadsQuery
@@ -273,8 +261,7 @@ export async function GET(request: NextRequest) {
       const leadsValue = leadsSalesTyped?.reduce((sum: number, l: any) => sum + (Number(l.value) || 0), 0) || 0
 
       // Opportunities
-      const opportunitiesQuery = supabase
-        .from('opportunities')
+      const opportunitiesQuery = fromCrm('opportunities')
         .select('id, stage_id, value, created_at', { count: 'exact' })
         .is('deleted_at', null)
       if (from) opportunitiesQuery.gte('created_at', from)
@@ -287,8 +274,7 @@ export async function GET(request: NextRequest) {
       const opportunitiesValue = opportunitiesTyped?.reduce((sum: number, o: any) => sum + (Number(o.value) || 0), 0) || 0
 
       // Quotations (CRM)
-      const quotationsQuery = supabase
-        .from('quotations')
+      const quotationsQuery = fromCrm('quotations')
         .select('id, status, total_amount, created_at', { count: 'exact' })
         .is('deleted_at', null)
       if (from) quotationsQuery.gte('created_at', from)
@@ -301,7 +287,7 @@ export async function GET(request: NextRequest) {
       const quotationsValue = quotationsSalesTyped?.reduce((sum: number, q: any) => sum + (Number(q.total_amount) || 0), 0) || 0
 
       // Calls
-      const callsQuery = supabase.from('calls').select('id, status, duration, created_at', { count: 'exact' }).is('deleted_at', null)
+      const callsQuery = fromCrm('calls').select('id, status, duration, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) callsQuery.gte('created_at', from)
       if (to) callsQuery.lte('created_at', to)
       const { data: calls, count: callsCount } = await callsQuery
@@ -324,8 +310,7 @@ export async function GET(request: NextRequest) {
       const trendStart = subDays(dateTo, daysToShow - 1)
       
       // Fetch all quotations at once
-      const { data: allQuotations } = await supabase
-        .from('quotations')
+      const { data: allQuotations } = await fromCrm('quotations')
         .select('total_amount, created_at')
         .is('deleted_at', null)
         .eq('status', 'accepted')
@@ -376,7 +361,7 @@ export async function GET(request: NextRequest) {
 
     if (tab === 'operations' || tab === 'all') {
       // Operations metrics
-      const ordersQuery = supabase.from('orders').select('id, status, created_at', { count: 'exact' }).is('deleted_at', null)
+      const ordersQuery = fromOps('orders').select('id, status, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) ordersQuery.gte('created_at', from)
       if (to) ordersQuery.lte('created_at', to)
       const { data: orders, count: ordersCount } = await ordersQuery
@@ -389,8 +374,7 @@ export async function GET(request: NextRequest) {
       const orderIds = ordersOpsTyped?.map((o: any) => o.id) || []
       let revenue = 0
       if (orderIds.length > 0) {
-        const { data: orderItems } = await supabase
-          .from('order_items')
+        const { data: orderItems } = await fromOps('order_items')
           .select('price, quantity')
           .in('order_id', orderIds)
           .is('deleted_at', null)
@@ -398,8 +382,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Quotations (Ops - all types)
-      const quotationsQuery = supabase
-        .from('quotations')
+      const quotationsQuery = fromOps('quotations')
         .select('id, status, amount, quotation_type, created_at', { count: 'exact' })
         .is('deleted_at', null)
       if (from) quotationsQuery.gte('created_at', from)
@@ -420,7 +403,7 @@ export async function GET(request: NextRequest) {
       const quotationTypes = Object.entries(quotationTypeCounts).map(([name, value]) => ({ name, value: value as number }))
 
       // Shipments
-      const shipmentsQuery = supabase.from('shipments').select('id, status, shipment_type, created_at', { count: 'exact' }).is('deleted_at', null)
+      const shipmentsQuery = fromOps('shipments').select('id, status, shipment_type, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) shipmentsQuery.gte('created_at', from)
       if (to) shipmentsQuery.lte('created_at', to)
       const { data: shipments, count: shipmentsCount } = await shipmentsQuery
@@ -439,7 +422,7 @@ export async function GET(request: NextRequest) {
       const shipmentTypes = Object.entries(shipmentTypeCounts).map(([name, value]) => ({ name, value: value as number }))
 
       // Payments
-      const paymentsQuery = supabase.from('payments').select('id, status, amount, created_at', { count: 'exact' }).is('deleted_at', null)
+      const paymentsQuery = fromOps('payments').select('id, status, amount, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) paymentsQuery.gte('created_at', from)
       if (to) paymentsQuery.lte('created_at', to)
       const { data: payments, count: paymentsCount } = await paymentsQuery
@@ -461,8 +444,7 @@ export async function GET(request: NextRequest) {
       const trendStart = subDays(dateTo, daysToShow - 1)
       
       // Fetch all shipments at once
-      const { data: allShipments } = await supabase
-        .from('shipments')
+      const { data: allShipments } = await fromOps('shipments')
         .select('status, created_at')
         .is('deleted_at', null)
         .gte('created_at', startOfDay(trendStart).toISOString())
@@ -525,22 +507,19 @@ export async function GET(request: NextRequest) {
 
     if (tab === 'hr' || tab === 'all') {
       // HR metrics
-      const { count: employeesCount } = await supabase
-        .from('employees')
+      const { count: employeesCount } = await fromCore('employees')
         .select('id', { count: 'exact', head: true })
         .is('deleted_at', null)
       const employeesActive = employeesCount || 0
 
       // Attendance
       const today = new Date().toISOString().split('T')[0]
-      const { count: attendanceToday } = await supabase
-        .from('attendance_sessions')
+      const { count: attendanceToday } = await fromHr('attendance_sessions')
         .select('id', { count: 'exact', head: true })
         .eq('date', today)
         .is('deleted_at', null)
 
-      const { data: attendanceSessions } = await supabase
-        .from('attendance_sessions')
+      const { data: attendanceSessions } = await fromHr('attendance_sessions')
         .select('id, status, date')
         .is('deleted_at', null)
       if (from) {
@@ -553,8 +532,7 @@ export async function GET(request: NextRequest) {
       const attendanceLate = 0 // Would need to check check-in time
 
       // Leave requests
-      const leaveRequestsQuery = supabase
-        .from('leave_requests')
+      const leaveRequestsQuery = fromHr('leave_requests')
         .select('id, status, leave_type, created_at', { count: 'exact' })
         .is('deleted_at', null)
       if (from) leaveRequestsQuery.gte('created_at', from)
@@ -579,8 +557,7 @@ export async function GET(request: NextRequest) {
       const trendStart = subDays(dateTo, daysToShow - 1)
       
       // Fetch all attendance sessions at once
-      const { data: allSessions } = await supabase
-        .from('attendance_sessions')
+      const { data: allSessions } = await fromHr('attendance_sessions')
         .select('status, created_at')
         .is('deleted_at', null)
         .gte('created_at', startOfDay(trendStart).toISOString())
@@ -643,7 +620,7 @@ export async function GET(request: NextRequest) {
 
     if (tab === 'clients' || tab === 'all') {
       // Clients metrics
-      const companiesQuery = supabase.from('companies').select('id, created_at', { count: 'exact' }).is('deleted_at', null)
+      const companiesQuery = fromCore('companies').select('id, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) companiesQuery.gte('created_at', from)
       if (to) companiesQuery.lte('created_at', to)
       const { data: companies, count: companiesCount } = await companiesQuery
@@ -657,7 +634,7 @@ export async function GET(request: NextRequest) {
       const companiesActive = companiesCount || 0
 
       // Contacts
-      const contactsQuery = supabase.from('contacts').select('id, created_at', { count: 'exact' }).is('deleted_at', null)
+      const contactsQuery = fromCore('contacts').select('id, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) contactsQuery.gte('created_at', from)
       if (to) contactsQuery.lte('created_at', to)
       const { data: contacts, count: contactsCount } = await contactsQuery
@@ -671,7 +648,7 @@ export async function GET(request: NextRequest) {
       const contactsActive = contactsCount || 0
 
       // Client leads
-      const leadsQuery = supabase.from('leads').select('id, status, company_id, created_at', { count: 'exact' }).is('deleted_at', null)
+      const leadsQuery = fromCrm('leads').select('id, status, company_id, created_at', { count: 'exact' }).is('deleted_at', null)
       if (from) leadsQuery.gte('created_at', from)
       if (to) leadsQuery.lte('created_at', to)
       const { data: leads, count: leadsCount } = await leadsQuery
@@ -686,14 +663,12 @@ export async function GET(request: NextRequest) {
       
       // Fetch all data at once
       const [companiesData, contactsData] = await Promise.all([
-        supabase
-          .from('companies')
+        fromCore('companies')
           .select('created_at')
           .is('deleted_at', null)
           .gte('created_at', startOfDay(trendStart).toISOString())
           .lte('created_at', endOfDay(dateTo).toISOString()),
-        supabase
-          .from('contacts')
+        fromCore('contacts')
           .select('created_at')
           .is('deleted_at', null)
           .gte('created_at', startOfDay(trendStart).toISOString())

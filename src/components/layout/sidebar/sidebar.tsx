@@ -136,20 +136,19 @@ export function Sidebar({ className, isCollapsed = false, onCollapse, ...props }
 
                   return (
                     <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        className={cn(
-                          'w-full justify-start transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground animate-fade-in',
-                          isActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
-                          isCollapsed && 'justify-center px-0'
-                        )}
-                      >
-                        <TransitionLink href={item.url}>
+                      <TransitionLink href={item.url}>
+                        <SidebarMenuButton
+                          isActive={isActive}
+                          className={cn(
+                            'w-full justify-start transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground animate-fade-in',
+                            isActive && 'bg-sidebar-accent text-sidebar-accent-foreground',
+                            isCollapsed && 'justify-center px-0'
+                          )}
+                        >
                           <Icon className="h-5 w-5" />
                           {!isCollapsed && <span className="ml-2">{item.title}</span>}
-                        </TransitionLink>
-                      </SidebarMenuButton>
+                        </SidebarMenuButton>
+                      </TransitionLink>
                     </SidebarMenuItem>
                   )
                 })}

@@ -2,20 +2,33 @@
  * Unified Supabase Client for Data Fetching
  * 
  * This module provides a simple, unified way to fetch data from Supabase
- * using the service role client, which bypasses RLS policies.
+ * using the anon key directly for direct database access.
  * 
- * IMPORTANT: This is for development/testing. In production, you should
- * re-enable RLS and use proper authentication.
+ * IMPORTANT: This uses the anon key. Ensure RLS policies are disabled
+ * or configured to allow access for the operations you need.
  */
 
-import { createServiceRoleClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { Database } from '@/lib/types/supabase'
 
 /**
- * Get a service role Supabase client
- * This bypasses RLS and can access all schemas
+ * Get a Supabase client using the anon key
+ * This provides direct access to Supabase using the anon key
  */
 export function getUnifiedClient() {
-  return createServiceRoleClient()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Missing Supabase environment variables. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  }
+
+  return createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
 }
 
 /**
@@ -35,7 +48,7 @@ export async function fetchAll<T = any>(
 ): Promise<{ data: T[]; count: number | null }> {
   const supabase = getUnifiedClient()
   
-  let query = supabase
+  let query = (supabase as any)
     .schema(schema)
     .from(table)
     .select(options.select || '*', { count: 'exact' })
@@ -90,7 +103,7 @@ export async function fetchById<T = any>(
 ): Promise<T | null> {
   const supabase = getUnifiedClient()
   
-  let query = supabase
+  let query = (supabase as any)
     .schema(schema)
     .from(table)
     .select(select || '*')
@@ -120,7 +133,7 @@ export async function createRecord<T = any>(
 ): Promise<T> {
   const supabase = getUnifiedClient()
   
-  const { data: result, error } = await supabase
+  const { data: result, error } = await (supabase as any)
     .schema(schema)
     .from(table)
     .insert(data)
@@ -145,7 +158,7 @@ export async function updateRecord<T = any>(
 ): Promise<T> {
   const supabase = getUnifiedClient()
   
-  const { data: result, error } = await supabase
+  const { data: result, error } = await (supabase as any)
     .schema(schema)
     .from(table)
     .update(data)
@@ -170,7 +183,7 @@ export async function deleteRecord(
 ): Promise<void> {
   const supabase = getUnifiedClient()
   
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .schema(schema)
     .from(table)
     .update({ deleted_at: new Date().toISOString() })
@@ -199,7 +212,7 @@ export async function searchRecords<T = any>(
 ): Promise<{ data: T[]; count: number | null }> {
   const supabase = getUnifiedClient()
   
-  let query = supabase
+  let query = (supabase as any)
     .schema(schema)
     .from(table)
     .select(options.select || '*', { count: 'exact' })

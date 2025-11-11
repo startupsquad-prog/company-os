@@ -49,6 +49,7 @@ export interface TaskFormData {
   status?: string
   department_id?: string
   vertical_key?: string
+  project_id?: string
   due_date?: Date
   estimated_duration?: number // Duration in minutes
   important_links?: Array<{ url: string; label: string }>

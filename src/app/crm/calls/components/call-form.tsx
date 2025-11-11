@@ -44,11 +44,28 @@ export function CallForm({ call, open, onOpenChange, onSubmit }: CallFormProps) 
     const fetchOptions = async () => {
       const supabase = createClient()
       const [contactsRes, leadsRes] = await Promise.all([
-        supabase.from('contacts').select('id, name').is('deleted_at', null).limit(100),
-        supabase.from('leads').select('id, contact:contacts(id, name)').is('deleted_at', null).limit(100),
+        (supabase as any).schema('core').from('contacts').select('id, name').is('deleted_at', null).limit(100),
+        (supabase as any).schema('crm').from('leads').select('id, contact_id').is('deleted_at', null).limit(100),
       ])
+      
+      // Fetch contacts for leads separately
+      const leadContactIds = [...new Set((leadsRes.data || []).map((l: any) => l.contact_id).filter(Boolean))]
+      const { data: leadContacts } = leadContactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name')
+            .in('id', leadContactIds)
+        : { data: [] }
+      
+      const leadContactsMap = new Map((leadContacts || []).map((c: any) => [c.id, c]))
+      const leadsWithContacts = (leadsRes.data || []).map((l: any) => ({
+        id: l.id,
+        contact: l.contact_id ? leadContactsMap.get(l.contact_id) || null : null,
+      }))
+      
       setContacts(contactsRes.data || [])
-      setLeads(leadsRes.data || [])
+      setLeads(leadsWithContacts)
     }
     if (open) fetchOptions()
   }, [open])

@@ -23,7 +23,8 @@ export default function DebugUserPage() {
         const supabase = createClient()
 
         // Get profile
-        const { data: profile, error: profileError } = await supabase
+        const { data: profile, error: profileError } = await (supabase as any)
+          .schema('core')
           .from('profiles')
           .select('*')
           .eq('user_id', clerkUser.id)
@@ -36,7 +37,7 @@ export default function DebugUserPage() {
         setProfileData({ profile, profileError })
 
         // Get roles
-        const { data: roles, error: rolesError } = await supabase.rpc('get_user_roles', {
+        const { data: roles, error: rolesError } = await (supabase as any).rpc('get_user_roles', {
           p_user_id: clerkUser.id,
         })
 
@@ -58,18 +59,22 @@ export default function DebugUserPage() {
       const supabase = createClient()
       
       // Find profile by email
-      const { data: profileByEmail } = await supabase
+      const { data: profileByEmail } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .select('*')
         .eq('email', clerkUser.emailAddresses[0]?.emailAddress || '')
         .single()
 
-      if (profileByEmail && profileByEmail.user_id !== clerkUser.id) {
+      const profileTyped = profileByEmail as any
+
+      if (profileTyped && profileTyped.user_id !== clerkUser.id) {
         // Update user_id to match Clerk ID
-        const { error: updateError } = await supabase
+        const { error: updateError } = await (supabase as any)
+          .schema('core')
           .from('profiles')
           .update({ user_id: clerkUser.id })
-          .eq('id', profileByEmail.id)
+          .eq('id', profileTyped.id)
 
         if (updateError) {
           console.error('Update error:', updateError)

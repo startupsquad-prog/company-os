@@ -34,9 +34,12 @@ function QuotationsPageContent() {
       setLoading(true)
       const supabase = createClient()
 
-      let query = supabase
+      // Use schema-aware query - quotations is in crm schema
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      let query = (supabase as any)
+        .schema('crm')
         .from('quotations')
-        .select('*, lead:leads(id, contact:contacts(id, name, email))', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .is('deleted_at', null)
 
       if (search) {
@@ -60,11 +63,47 @@ function QuotationsPageContent() {
       const to = from + pageSize - 1
       query = query.range(from, to)
 
-      const { data, error, count } = await query
+      const { data: quotations, error, count } = await query
 
       if (error) throw error
 
-      setQuotations(data || [])
+      // Fetch related data separately
+      const leadIds = [...new Set((quotations || []).map((q: any) => q.lead_id).filter(Boolean))]
+
+      // Fetch leads with their contacts
+      const { data: leads } = leadIds.length > 0
+        ? await (supabase as any)
+            .schema('crm')
+            .from('leads')
+            .select('id, contact_id')
+            .in('id', leadIds)
+        : { data: [] }
+
+      const contactIds = [...new Set((leads || []).map((l: any) => l.contact_id).filter(Boolean))]
+      const { data: contacts } = contactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name, email')
+            .in('id', contactIds)
+        : { data: [] }
+
+      // Create lookup maps
+      const leadsMap = new Map((leads || []).map((l: any) => [l.id, l]))
+      const contactsMap = new Map((contacts || []).map((c: any) => [c.id, c]))
+
+      // Combine quotations with relations
+      const quotationsWithRelations = (quotations || []).map((quotation: any) => {
+        const lead = quotation.lead_id ? leadsMap.get(quotation.lead_id) : null
+        const contact = lead?.contact_id ? contactsMap.get(lead.contact_id) : null
+
+        return {
+          ...quotation,
+          lead: lead ? { ...lead, contact } : null,
+        }
+      })
+
+      setQuotations(quotationsWithRelations)
       setPageCount(count ? Math.ceil(count / pageSize) : 0)
     } catch (error: any) {
       console.error('Error fetching quotations:', error)
@@ -86,7 +125,7 @@ function QuotationsPageContent() {
       const supabase = createClient()
 
       if (editingQuotation) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('quotations')
           .update({
             ...data,
@@ -97,7 +136,7 @@ function QuotationsPageContent() {
         if (error) throw error
         toast.success('Quotation updated successfully')
       } else {
-        const { error } = await supabase.from('quotations').insert({
+        const { error } = await (supabase as any).from('quotations').insert({
           ...data,
           created_by: clerkUser.id,
         })
@@ -120,7 +159,7 @@ function QuotationsPageContent() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('quotations')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', quotation.id)

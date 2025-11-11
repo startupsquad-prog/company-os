@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUnifiedClient } from '@/lib/db/unified-client'
+import { fromCommonUtil, fromCore } from '@/lib/db/schema-helpers'
 
 /**
  * GET /api/unified/tasks/[id]
@@ -13,12 +14,11 @@ export async function GET(
     const { id } = await params
     const supabase = getUnifiedClient()
 
-    const { data: task, error } = await ((supabase as any)
-      .from('tasks')
+    const { data: task, error } = await fromCommonUtil('tasks')
       .select('*')
       .eq('id', id)
       .is('deleted_at', null)
-      .single())
+      .single()
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -32,30 +32,26 @@ export async function GET(
     // Fetch related data separately (PostgREST can't resolve cross-schema foreign keys)
     const [assigneesResult, departmentResult, createdByResult, updatedByResult] = await Promise.all([
       // Fetch assignees
-      (supabase as any)
-        .from('task_assignees')
+      fromCommonUtil('task_assignees')
         .select('*')
         .eq('task_id', id),
       // Fetch department
       taskTyped.department_id
-        ? (supabase as any)
-            .from('departments')
+        ? fromCore('departments')
             .select('id, name')
             .eq('id', taskTyped.department_id)
             .single()
         : Promise.resolve({ data: null }),
       // Fetch created_by profile
       taskTyped.created_by
-        ? (supabase as any)
-            .from('profiles')
+        ? fromCore('profiles')
             .select('id, first_name, last_name, email, avatar_url')
             .eq('id', taskTyped.created_by)
             .single()
         : Promise.resolve({ data: null }),
       // Fetch updated_by profile
       taskTyped.updated_by
-        ? (supabase as any)
-            .from('profiles')
+        ? fromCore('profiles')
             .select('id, first_name, last_name, email, avatar_url')
             .eq('id', taskTyped.updated_by)
             .single()
@@ -67,8 +63,7 @@ export async function GET(
     
     // Fetch profiles for assignees
     const { data: assigneeProfiles } = profileIds.length > 0
-      ? await supabase
-          .from('profiles')
+      ? await fromCore('profiles')
           .select('id, first_name, last_name, email, avatar_url')
           .in('id', profileIds)
       : { data: [] }
@@ -119,14 +114,14 @@ export async function PATCH(
     if (body.department_id !== undefined) updateData.department_id = body.department_id
     if (body.vertical_id !== undefined) updateData.vertical_id = body.vertical_id
     if (body.vertical_key !== undefined) updateData.vertical_key = body.vertical_key
+    if (body.project_id !== undefined) updateData.project_id = body.project_id
     if (body.due_date !== undefined) updateData.due_date = body.due_date
     if (body.estimated_duration !== undefined) updateData.estimated_duration = body.estimated_duration
     if (body.important_links !== undefined) updateData.important_links = body.important_links
     if (body.position !== undefined) updateData.position = body.position
     if (body.updated_by !== undefined) updateData.updated_by = body.updated_by
 
-    const { data: task, error } = await supabase
-      .from('tasks')
+    const { data: task, error } = await fromCommonUtil('tasks')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -139,8 +134,7 @@ export async function PATCH(
     // Update assignees if provided
     if (body.assignees !== undefined) {
       // Delete existing assignees
-      await supabase
-        .from('task_assignees')
+      await fromCommonUtil('task_assignees')
         .delete()
         .eq('task_id', id)
 
@@ -152,8 +146,7 @@ export async function PATCH(
           role: a.role || 'collaborator',
         }))
 
-        const { error: assigneeError } = await supabase
-          .from('task_assignees')
+        const { error: assigneeError } = await fromCommonUtil('task_assignees')
           .insert(assigneesData)
 
         if (assigneeError) {
@@ -185,8 +178,7 @@ export async function DELETE(
     const { id } = await params
     const supabase = getUnifiedClient()
 
-    const { error } = await supabase
-      .from('tasks')
+    const { error } = await fromCommonUtil('tasks')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', id)
 

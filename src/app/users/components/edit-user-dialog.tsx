@@ -59,7 +59,7 @@ export function EditUserDialog({
       if (roleOptions.length === 0) return
 
       const supabase = createClient()
-      const { data: roles } = await supabase
+      const { data: roles } = await (supabase as any)
         .from('roles')
         .select('id, name')
         .in(
@@ -69,8 +69,9 @@ export function EditUserDialog({
         .is('deleted_at', null)
 
       if (roles) {
+        const rolesTyped = roles as any[]
         const map = new Map<string, string>()
-        roles.forEach((role) => {
+        rolesTyped.forEach((role) => {
           map.set(role.name, role.id)
         })
         setRoleIdMap(map)

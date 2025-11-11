@@ -175,3 +175,7 @@
 
 **Summary:** The critical core libraries are now fully migrated to Drizzle ORM. All database CRUD operations for leads, tasks, and notifications now go through Neon + Drizzle. Client components and hooks still use Supabase directly, but they should be updated to use API routes (which now use the migrated libraries).
 
+
+
+
+

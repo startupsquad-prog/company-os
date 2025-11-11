@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedClient } from '@/lib/db/unified-client'
+import { fromCrm, fromCore } from '@/lib/db/schema-helpers'
 
 /**
  * GET /api/unified/leads
@@ -8,7 +8,6 @@ import { getUnifiedClient } from '@/lib/db/unified-client'
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const supabase = getUnifiedClient()
 
     // Parse query parameters
     const page = parseInt(searchParams.get('page') || '1')
@@ -34,9 +33,8 @@ export async function GET(request: NextRequest) {
       filters.vertical_id = verticalId
     }
 
-    // Build query - use public schema (views exist for crm tables)
-    let query = supabase
-      .from('leads')
+    // Build query using schema-aware helper
+    let query = fromCrm('leads')
       .select('*', { count: 'exact' })
       .is('deleted_at', null)
 
@@ -83,8 +81,7 @@ export async function GET(request: NextRequest) {
     // Fetch contacts
     const { data: contacts } =
       contactIds.length > 0
-        ? await supabase
-            .from('contacts')
+        ? await fromCore('contacts')
             .select('id, name, email, phone')
             .in('id', contactIds)
         : { data: [] }
@@ -92,8 +89,7 @@ export async function GET(request: NextRequest) {
     // Fetch companies
     const { data: companies } =
       companyIds.length > 0
-        ? await supabase
-            .from('companies')
+        ? await fromCore('companies')
             .select('id, name, website, industry')
             .in('id', companyIds)
         : { data: [] }
@@ -101,8 +97,7 @@ export async function GET(request: NextRequest) {
     // Fetch profiles (owners)
     const { data: profiles } =
       ownerIds.length > 0
-        ? await supabase
-            .from('profiles')
+        ? await fromCore('profiles')
             .select('id, first_name, last_name, email, avatar_url')
             .in('id', ownerIds)
         : { data: [] }
@@ -143,7 +138,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const supabase = getUnifiedClient()
 
     const leadData = {
       contact_id: body.contact_id,
@@ -159,11 +153,10 @@ export async function POST(request: NextRequest) {
       created_by: body.created_by,
     }
 
-    const { data: lead, error } = await ((supabase as any)
-      .from('leads')
+    const { data: lead, error } = await fromCrm('leads')
       .insert(leadData)
       .select()
-      .single())
+      .single()
 
     if (error) {
       throw new Error(`Failed to create lead: ${error.message}`)

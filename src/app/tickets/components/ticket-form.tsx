@@ -22,7 +22,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { DatePicker } from '@/components/ui/date-picker'
 import type { TicketFormData, TicketFull, TicketStatus, TicketPriority } from '@/lib/types/tickets'
-import { createClient } from '@/lib/supabase/client'
+// Removed Supabase client import - now using API routes with Drizzle
 
 interface TicketFormProps {
   ticket?: TicketFull | null
@@ -50,13 +50,18 @@ export function TicketForm({ ticket, open, onOpenChange, onSubmit }: TicketFormP
 
   useEffect(() => {
     const fetchOptions = async () => {
-      const supabase = createClient()
-      const [contactsRes, profilesRes] = await Promise.all([
-        supabase.from('contacts').select('id, name, email').is('deleted_at', null).limit(100),
-        supabase.from('profiles').select('id, first_name, last_name').limit(100),
-      ])
-      setContacts(contactsRes.data || [])
-      setProfiles(profilesRes.data || [])
+      try {
+        const [contactsRes, profilesRes] = await Promise.all([
+          fetch('/api/unified/contacts'),
+          fetch('/api/unified/profiles'),
+        ])
+        const contactsData = await contactsRes.json()
+        const profilesData = await profilesRes.json()
+        setContacts(contactsData.data || [])
+        setProfiles(profilesData.data || [])
+      } catch (error) {
+        console.error('Error fetching options:', error)
+      }
     }
     if (open) fetchOptions()
   }, [open])
@@ -145,22 +150,31 @@ export function TicketForm({ ticket, open, onOpenChange, onSubmit }: TicketFormP
               <div className="grid gap-2">
                 <Label htmlFor="client_id">Client</Label>
                 <Select
-                  value={formData.client_id || ''}
+                  value={formData.client_id || '__none__'}
                   onValueChange={(value) => {
-                    const contact = contacts.find((c) => c.id === value)
-                    setFormData({
-                      ...formData,
-                      client_id: value || undefined,
-                      client_name: contact?.name || undefined,
-                      client_email: contact?.email || undefined,
-                    })
+                    if (value === '__none__') {
+                      setFormData({
+                        ...formData,
+                        client_id: undefined,
+                        client_name: undefined,
+                        client_email: undefined,
+                      })
+                    } else {
+                      const contact = contacts.find((c) => c.id === value)
+                      setFormData({
+                        ...formData,
+                        client_id: value || undefined,
+                        client_name: contact?.name || undefined,
+                        client_email: contact?.email || undefined,
+                      })
+                    }
                   }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {contacts.map((contact) => (
                       <SelectItem key={contact.id} value={contact.id}>
                         {contact.name}
@@ -172,14 +186,14 @@ export function TicketForm({ ticket, open, onOpenChange, onSubmit }: TicketFormP
               <div className="grid gap-2">
                 <Label htmlFor="assignee_id">Assignee</Label>
                 <Select
-                  value={formData.assignee_id || ''}
-                  onValueChange={(value) => setFormData({ ...formData, assignee_id: value || undefined })}
+                  value={formData.assignee_id || '__unassigned__'}
+                  onValueChange={(value) => setFormData({ ...formData, assignee_id: value === '__unassigned__' ? undefined : value || undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select assignee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Unassigned</SelectItem>
+                    <SelectItem value="__unassigned__">Unassigned</SelectItem>
                     {profiles.map((profile) => (
                       <SelectItem key={profile.id} value={profile.id}>
                         {[profile.first_name, profile.last_name].filter(Boolean).join(' ') || 'Unknown'}

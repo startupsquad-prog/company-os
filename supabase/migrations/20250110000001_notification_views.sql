@@ -226,3 +226,7 @@ GRANT EXECUTE ON FUNCTION public.mark_all_notifications_read(UUID) TO authentica
 
 
 
+
+
+
+

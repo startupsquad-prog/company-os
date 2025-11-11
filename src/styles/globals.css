@@ -252,6 +252,12 @@
 }
 
 /* Clerk UserButton Modal - Compact & Centered */
+/* Remove gap from password manager cards tab */
+.password-manager-tabs [data-radix-tabs-content][data-value="cards"] {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
 @layer components {
   /* Ensure modal is centered with spacing */
   /* Revert to Clerk defaults: remove overrides to keep native compact sizing */

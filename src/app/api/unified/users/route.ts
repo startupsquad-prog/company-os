@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedClient } from '@/lib/db/unified-client'
+import { fromCore } from '@/lib/db/schema-helpers'
 
 /**
  * GET /api/unified/users
@@ -8,17 +8,14 @@ import { getUnifiedClient } from '@/lib/db/unified-client'
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const supabase = getUnifiedClient()
 
     // Parse query parameters
     const page = parseInt(searchParams.get('page') || '1')
     const pageSize = parseInt(searchParams.get('pageSize') || '10')
     const search = searchParams.get('search') || ''
 
-    // Build query - fetch profiles only (fetch related data separately)
-    // PostgREST can't resolve foreign keys across schemas, so we fetch separately
-    let query = supabase
-      .from('profiles')
+    // Build query using schema-aware helper
+    let query = fromCore('profiles')
       .select('*', { count: 'exact' })
       .is('deleted_at', null)
 
@@ -48,8 +45,7 @@ export async function GET(request: NextRequest) {
     // Fetch departments separately
     const departmentIds = [...new Set((profiles || []).map((p: any) => p.department_id).filter(Boolean))]
     const { data: departments } = departmentIds.length > 0
-      ? await supabase
-          .from('departments')
+      ? await fromCore('departments')
           .select('id, name')
           .in('id', departmentIds)
       : { data: [] }
@@ -58,8 +54,7 @@ export async function GET(request: NextRequest) {
     const userIds = [...new Set((profiles || []).map((p: any) => p.user_id).filter(Boolean))]
     const { data: roleBindings } =
       userIds.length > 0
-        ? await supabase
-            .from('user_role_bindings')
+        ? await fromCore('user_role_bindings')
             .select('user_id, role_id')
             .in('user_id', userIds)
         : { data: [] }
@@ -67,8 +62,7 @@ export async function GET(request: NextRequest) {
     const roleIds = [...new Set((roleBindings || []).map((rb: any) => rb.role_id).filter(Boolean))]
     const { data: roles } =
       roleIds.length > 0
-        ? await supabase
-            .from('roles')
+        ? await fromCore('roles')
             .select('id, name, description')
             .in('id', roleIds)
             .is('deleted_at', null)

@@ -104,10 +104,17 @@ export function useAiChat() {
   const userId = user?.id || null
 
   useEffect(() => {
-    if (!userId || hasRestored) return
+    if (!userId || hasRestored || typeof window === 'undefined') return
 
     const storageKey = `${STORAGE_PREFIX}${userId}`
-    const savedMessages = localStorage.getItem(storageKey)
+    let savedMessages: string | null = null
+    try {
+      savedMessages = localStorage.getItem(storageKey)
+    } catch (error) {
+      console.warn('Error reading from localStorage:', error)
+      setHasRestored(true)
+      return
+    }
 
     if (savedMessages) {
       try {
@@ -124,7 +131,7 @@ export function useAiChat() {
 
   // Save messages to localStorage whenever they change (skip initial restore)
   useEffect(() => {
-    if (!userId || !hasRestored || chat.messages.length === 0) return
+    if (!userId || !hasRestored || chat.messages.length === 0 || typeof window === 'undefined') return
 
     const storageKey = `${STORAGE_PREFIX}${userId}`
     try {
@@ -141,9 +148,13 @@ export function useAiChat() {
   const resetChat = useCallback(() => {
     chat.setMessages([])
     setInput('')
-    if (userId) {
-      const storageKey = `${STORAGE_PREFIX}${userId}`
-      localStorage.removeItem(storageKey)
+    if (userId && typeof window !== 'undefined') {
+      try {
+        const storageKey = `${STORAGE_PREFIX}${userId}`
+        localStorage.removeItem(storageKey)
+      } catch (error) {
+        console.warn('Error removing from localStorage:', error)
+      }
     }
   }, [chat, userId])
 

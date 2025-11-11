@@ -3,7 +3,23 @@
     "ai-elements": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "https://registry.ai-sdk.dev/api/mcp"]
+    },
+    "rzp-mcp-server": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://mcp.razorpay.com/mcp",
+        "--header",
+        "Authorization:${AUTH_HEADER}"
+      ],
+      "env": {
+        "AUTH_HEADER": "Basic <Base64(key:secret)>"
+      }
     }
   }
 }
+
+
+
+
 

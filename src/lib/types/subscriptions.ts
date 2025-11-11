@@ -24,6 +24,7 @@ export interface Subscription {
   portal_url: string | null
   category: string | null
   notes: string | null
+  icon_url: string | null
   credentials_encrypted: Record<string, any> | null
   meta: Record<string, any> | null
   created_at: string

@@ -7,6 +7,9 @@ import { RoleProvider } from '@/lib/roles/role-context'
 import OnekoCat from '@/components/common/OnekoCat'
 import { ViewTransitions } from 'next-view-transitions'
 import { PageTransitionProvider } from '@/components/page-transition-provider'
+import { ErrorBoundary } from '@/components/error-boundary'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Company OS',
@@ -35,11 +38,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  return (
-    <ClerkProvider>
-      <ViewTransitions>
-        <html lang="en" suppressHydrationWarning>
-          <body className="font-sans" suppressHydrationWarning>
+  const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  
+  const content = (
+    <ViewTransitions>
+      <html lang="en" suppressHydrationWarning>
+        <body className="font-sans" suppressHydrationWarning>
+          <ErrorBoundary>
             <ThemeProvider
               attribute="data-theme"
               defaultTheme="system"
@@ -53,9 +58,31 @@ export default function RootLayout({
                 <OnekoCat />
               </RoleProvider>
             </ThemeProvider>
-          </body>
-        </html>
-      </ViewTransitions>
+          </ErrorBoundary>
+        </body>
+      </html>
+    </ViewTransitions>
+  )
+  
+  // Always wrap with ClerkProvider to ensure useUser() hooks work
+  // This is required because RoleProvider and other components use useUser()
+  if (!clerkPublishableKey) {
+    console.error(
+      'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is not set. Clerk authentication will not work properly.'
+    )
+    // Still wrap with ClerkProvider but with a placeholder key
+    // This prevents useUser() from throwing errors
+    // ClerkProvider will handle invalid keys gracefully
+    return (
+      <ClerkProvider publishableKey="pk_test_placeholder">
+        {content}
+      </ClerkProvider>
+    )
+  }
+  
+  return (
+    <ClerkProvider publishableKey={clerkPublishableKey}>
+      {content}
     </ClerkProvider>
   )
 }

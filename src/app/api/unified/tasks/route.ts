@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUnifiedClient } from '@/lib/db/unified-client'
+import { fromCommonUtil, fromCore } from '@/lib/db/schema-helpers'
 
 /**
  * GET /api/unified/tasks
@@ -35,16 +36,11 @@ export async function GET(request: NextRequest) {
       filters.vertical_id = verticalId
     }
 
-    // Build query
-    let query = supabase
-      .from('tasks')
-      .select(
-        `
-        *,
-        department:departments!tasks_department_id_fkey(id, name)
-      `,
-        { count: 'exact' }
-      )
+    // Build query using schema-aware helper
+    // Note: We fetch departments separately because foreign key references
+    // across schemas (common_util -> core) don't work reliably in Supabase
+    let query = fromCommonUtil('tasks')
+      .select('*', { count: 'exact' })
       .is('deleted_at', null)
 
     // Apply filters
@@ -89,8 +85,7 @@ export async function GET(request: NextRequest) {
     
     // Fetch all assignees for all tasks in one query
     const { data: allAssignees } = taskIds.length > 0
-      ? await supabase
-          .from('task_assignees')
+      ? await fromCommonUtil('task_assignees')
           .select('*')
           .in('task_id', taskIds)
       : { data: [] }
@@ -98,8 +93,7 @@ export async function GET(request: NextRequest) {
     // Fetch all departments
     const departmentIds = [...new Set((tasks || []).map((t: any) => t.department_id).filter(Boolean))]
     const { data: departments } = departmentIds.length > 0
-      ? await supabase
-          .from('departments')
+      ? await fromCore('departments')
           .select('id, name')
           .in('id', departmentIds)
       : { data: [] }
@@ -113,8 +107,7 @@ export async function GET(request: NextRequest) {
       ]),
     ]
     const { data: profiles } = profileIds.length > 0
-      ? await supabase
-          .from('profiles')
+      ? await fromCore('profiles')
           .select('id, first_name, last_name, email, avatar_url')
           .in('id', profileIds)
       : { data: [] }
@@ -175,6 +168,7 @@ export async function POST(request: NextRequest) {
       department_id: body.department_id,
       vertical_id: body.vertical_id,
       vertical_key: body.vertical_key,
+      project_id: body.project_id,
       due_date: body.due_date,
       estimated_duration: body.estimated_duration,
       important_links: body.important_links || [],
@@ -182,8 +176,7 @@ export async function POST(request: NextRequest) {
       updated_by: body.updated_by || body.created_by,
     }
 
-    const { data: task, error } = await supabase
-      .from('tasks')
+    const { data: task, error } = await fromCommonUtil('tasks')
       .insert(taskData)
       .select()
       .single()

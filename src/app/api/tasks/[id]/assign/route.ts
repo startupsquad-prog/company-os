@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { assignUser } from '@/lib/db/tasks'
-import { createServerClient } from '@/lib/supabase/server'
+import { fromCommonUtil, fromCore } from '@/lib/db/schema-helpers'
 
 /**
  * POST /api/tasks/[id]/assign
@@ -29,9 +29,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Verify task exists
-    const supabase = await createServerClient()
-    const { data: task, error: taskError } = await supabase
-      .from('tasks')
+    const { data: task, error: taskError } = await fromCommonUtil('tasks')
       .select('id')
       .eq('id', id)
       .is('deleted_at', null)
@@ -42,8 +40,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Verify profile exists
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+    const { data: profile, error: profileError } = await fromCore('profiles')
       .select('id')
       .eq('id', body.profile_id)
       .single()

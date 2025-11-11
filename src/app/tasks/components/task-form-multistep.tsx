@@ -106,7 +106,8 @@ export function TaskFormMultiStep({
     const fetchProfiles = async () => {
       try {
         const supabase = createClient()
-        const { data: profiles } = await supabase
+        const { data: profiles } = await (supabase as any)
+          .schema('core')
           .from('profiles')
           .select('id, first_name, last_name, email')
           .is('deleted_at', null)

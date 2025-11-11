@@ -138,20 +138,22 @@ export default function MailPage() {
   }))
 
   return (
-    <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
-      <div className="flex flex-1 min-w-0 overflow-hidden">
-        {/* Mail Sidebar */}
-        <MailSidebar
-          folders={foldersWithActive}
-          categories={mockCategories}
-          selectedFolderId={selectedFolderId}
-          selectedCategoryId={selectedCategoryId}
-          onSelectFolder={handleSelectFolder}
-          onSelectCategory={handleSelectCategory}
-        />
+    <div className="flex flex-1 flex-col min-w-0 min-h-0 h-full overflow-hidden">
+      <div className="flex flex-1 min-w-0 min-h-0 overflow-hidden">
+        {/* Left Sidebar - Mail Navigation */}
+        <div className="flex flex-col w-[240px] border-r bg-background flex-shrink-0 overflow-hidden h-full">
+          <MailSidebar
+            folders={foldersWithActive}
+            categories={mockCategories}
+            selectedFolderId={selectedFolderId}
+            selectedCategoryId={selectedCategoryId}
+            onSelectFolder={handleSelectFolder}
+            onSelectCategory={handleSelectCategory}
+          />
+        </div>
 
         {/* Middle Panel - Email List */}
-        <div className="flex flex-col w-[400px] border-r bg-background min-w-0 overflow-hidden">
+        <div className="flex flex-col w-[400px] border-r bg-background flex-shrink-0 overflow-hidden h-full">
           <div className="flex-shrink-0">
             <EmailListHeader
               folderName={selectedFolder.name}
@@ -173,8 +175,8 @@ export default function MailPage() {
         </div>
 
         {/* Right Panel - Email Viewer */}
-        <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-          <div className="flex-shrink-0">
+        <div className="flex flex-1 flex-col min-w-0 bg-background overflow-hidden h-full">
+          <div className="flex-shrink-0 border-b">
             <EmailViewerHeader
               email={selectedEmailContent}
               onReply={() => console.log('Reply clicked')}
@@ -182,8 +184,10 @@ export default function MailPage() {
               onForward={() => console.log('Forward clicked')}
             />
           </div>
-          <EmailViewerContent email={selectedEmailContent} />
-          <div className="flex-shrink-0">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <EmailViewerContent email={selectedEmailContent} />
+          </div>
+          <div className="flex-shrink-0 border-t">
             <EmailReplyInput
               email={selectedEmailContent}
               onSend={handleReply}

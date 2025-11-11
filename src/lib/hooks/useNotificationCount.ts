@@ -24,7 +24,7 @@ export function useNotificationCount() {
 
         // Use RPC function for efficiency
         // Note: Notifications will be rebuilt later with a better approach
-        const { data: count, error } = await supabase.rpc('get_unread_notification_count', {
+        const { data: count, error } = await (supabase as any).rpc('get_unread_notification_count', {
           p_user_id: clerkUser.id,
         })
 
@@ -117,7 +117,7 @@ export function useNotificationCount() {
       }
 
       const supabase = createClient()
-      const { data: count, error } = await supabase.rpc('get_unread_notification_count', {
+      const { data: count, error } = await (supabase as any).rpc('get_unread_notification_count', {
         p_user_id: clerkUser.id,
       })
 

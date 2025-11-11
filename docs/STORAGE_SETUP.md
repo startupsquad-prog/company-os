@@ -213,3 +213,7 @@ After setting up the bucket, verify it works by:
 - The bucket has a 50MB file size limit
 - For larger files, increase the limit in bucket settings or split files
 
+
+
+
+

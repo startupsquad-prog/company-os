@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedClient } from '@/lib/db/unified-client'
+import { fromCore } from '@/lib/db/schema-helpers'
 
 /**
  * GET /api/unified/users/[id]
@@ -11,10 +11,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = getUnifiedClient()
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
+    const { data: profile, error } = await fromCore('profiles')
       .select('*')
       .eq('id', id)
       .is('deleted_at', null)
@@ -27,18 +25,19 @@ export async function GET(
       throw new Error(`Failed to fetch user: ${error.message}`)
     }
 
+    const profileTyped = profile as any
+
     // Fetch department if profile has one
-    const { data: department } = profile.department_id
-      ? await supabase
-          .from('departments')
+    const { data: department } = profileTyped.department_id
+      ? await fromCore('departments')
           .select('id, name')
-          .eq('id', profile.department_id)
+          .eq('id', profileTyped.department_id)
           .single()
       : { data: null }
 
     return NextResponse.json({
       data: {
-        ...profile,
+        ...profileTyped,
         department,
       },
     })
@@ -62,7 +61,6 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    const supabase = getUnifiedClient()
 
     const updateData: Record<string, any> = {}
     if (body.first_name !== undefined) updateData.first_name = body.first_name
@@ -73,8 +71,7 @@ export async function PATCH(
     if (body.department_id !== undefined) updateData.department_id = body.department_id
     if (body.updated_by !== undefined) updateData.updated_by = body.updated_by
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
+    const { data: profile, error } = await fromCore('profiles')
       .update(updateData)
       .eq('id', id)
       .select()

@@ -15,6 +15,7 @@ import {
 import { MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react'
 import { format, isPast } from 'date-fns'
 import type { SubscriptionFull, SubscriptionStatus, BillingCycle } from '@/lib/types/subscriptions'
+import { SubscriptionIcon } from './subscription-icon'
 
 const statusConfig: Record<
   SubscriptionStatus,
@@ -43,13 +44,20 @@ export const createSubscriptionColumns = (handlers?: {
       cell: ({ row }) => {
         const subscription = row.original
         return (
-          <Button
-            variant="link"
-            className="h-auto p-0 font-medium text-left justify-start"
-            onClick={() => onView?.(subscription)}
-          >
-            {subscription.subscription_name}
-          </Button>
+          <div className="flex items-center gap-3">
+            <SubscriptionIcon
+              iconUrl={subscription.icon_url}
+              subscriptionName={subscription.subscription_name}
+              size={32}
+            />
+            <Button
+              variant="link"
+              className="h-auto p-0 font-medium text-left justify-start"
+              onClick={() => onView?.(subscription)}
+            >
+              {subscription.subscription_name}
+            </Button>
+          </div>
         )
       },
     },

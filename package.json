@@ -17,7 +17,11 @@
     "supabase:link": "npx supabase link",
     "supabase:deploy:functions": "npx supabase functions deploy process-notification task-reminders",
     "supabase:deploy:process-notification": "npx supabase functions deploy process-notification",
-    "supabase:deploy:task-reminders": "npx supabase functions deploy task-reminders"
+    "supabase:deploy:task-reminders": "npx supabase functions deploy task-reminders",
+    "db:introspect": "drizzle-kit introspect --config ./db/drizzle.config.ts",
+    "db:generate": "drizzle-kit generate --config ./db/drizzle.config.ts",
+    "db:migrate": "drizzle-kit push --config ./db/drizzle.config.ts",
+    "db:studio": "drizzle-kit studio --config ./db/drizzle.config.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.64",
@@ -56,12 +60,15 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
+    "drizzle-kit": "^0.31.6",
+    "drizzle-orm": "^0.44.7",
     "geist": "^1.5.1",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.468.0",
     "next": "^16.0.1",
     "next-themes": "^0.4.6",
     "next-view-transitions": "^0.3.4",
+    "postgres": "^3.4.7",
     "react": "^19.2.0",
     "react-day-picker": "^9.11.1",
     "react-dom": "^19.2.0",

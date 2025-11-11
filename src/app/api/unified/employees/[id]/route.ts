@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getUnifiedClient } from '@/lib/db/unified-client'
+import { fromCore } from '@/lib/db/schema-helpers'
 
 /**
  * GET /api/unified/employees/[id]
@@ -11,14 +11,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = getUnifiedClient()
 
-    const { data: employee, error } = await ((supabase as any)
-      .from('employees')
+    const { data: employee, error } = await fromCore('employees')
       .select('*')
       .eq('id', id)
       .is('deleted_at', null)
-      .single())
+      .single()
 
     if (error) {
       if (error.code === 'PGRST116') {
@@ -31,8 +29,7 @@ export async function GET(
 
     // Fetch related profile
     const profileResult = employeeTyped.profile_id
-      ? await supabase
-          .from('profiles')
+      ? await fromCore('profiles')
           .select('id, first_name, last_name, email, phone, avatar_url, department_id')
           .eq('id', employeeTyped.profile_id)
           .single()
@@ -42,8 +39,7 @@ export async function GET(
 
     // Fetch department if profile has one
     const departmentResult = profileTyped?.department_id
-      ? await supabase
-          .from('departments')
+      ? await fromCore('departments')
           .select('id, name')
           .eq('id', profileTyped.department_id)
           .single()
@@ -77,7 +73,6 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await request.json()
-    const supabase = getUnifiedClient()
 
     const updateData: Record<string, any> = {}
     if (body.employee_id !== undefined) updateData.employee_id = body.employee_id
@@ -86,12 +81,11 @@ export async function PATCH(
     if (body.termination_date !== undefined) updateData.termination_date = body.termination_date
     if (body.updated_by !== undefined) updateData.updated_by = body.updated_by
 
-    const { data: employee, error } = await ((supabase as any)
-      .from('employees')
+    const { data: employee, error } = await fromCore('employees')
       .update(updateData)
       .eq('id', id)
       .select()
-      .single())
+      .single()
 
     if (error) {
       throw new Error(`Failed to update employee: ${error.message}`)
@@ -117,12 +111,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const supabase = getUnifiedClient()
 
-    const { error } = await ((supabase as any)
-      .from('employees')
+    const { error } = await fromCore('employees')
       .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id))
+      .eq('id', id)
 
     if (error) {
       throw new Error(`Failed to delete employee: ${error.message}`)

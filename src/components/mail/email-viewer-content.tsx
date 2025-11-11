@@ -1,5 +1,6 @@
 'use client'
 
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { EmailContent } from './types'
 
 interface EmailViewerContentProps {
@@ -9,7 +10,7 @@ interface EmailViewerContentProps {
 export function EmailViewerContent({ email }: EmailViewerContentProps) {
   if (!email) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground min-h-0 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center text-muted-foreground min-h-0">
         <div className="text-center">
           <p className="text-sm">No email selected</p>
           <p className="text-xs mt-1">Select an email from the list to view</p>
@@ -19,9 +20,9 @@ export function EmailViewerContent({ email }: EmailViewerContentProps) {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
+    <ScrollArea className="flex-1 min-h-0">
       <div className="px-6 py-4">
-        <div className="prose prose-sm max-w-none">
+        <div className="prose prose-sm max-w-none dark:prose-invert">
           <div className="whitespace-pre-wrap text-sm leading-relaxed">
             {email.body}
           </div>
@@ -49,7 +50,7 @@ export function EmailViewerContent({ email }: EmailViewerContentProps) {
           </div>
         )}
       </div>
-    </div>
+    </ScrollArea>
   )
 }
 

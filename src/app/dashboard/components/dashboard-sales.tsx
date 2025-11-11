@@ -87,6 +87,11 @@ export function DashboardSales({ metrics, loading }: DashboardSalesProps) {
 
   const safeMetrics = { ...defaultMetrics, ...metrics }
 
+  // Conversion Rates (calculated before use)
+  const leadToOppRate = safeMetrics.leads.total > 0 ? (safeMetrics.opportunities.total / safeMetrics.leads.total) * 100 : 0
+  const oppToWonRate = safeMetrics.opportunities.total > 0 ? (safeMetrics.opportunities.won / safeMetrics.opportunities.total) * 100 : 0
+  const quoteApprovalRate = safeMetrics.quotations.total > 0 ? (safeMetrics.quotations.approved / safeMetrics.quotations.total) * 100 : 0
+
   // Pipeline Funnel Data with conversion rates
   const funnelStages = [
     {
@@ -134,10 +139,7 @@ export function DashboardSales({ metrics, loading }: DashboardSalesProps) {
   // Lead Source Distribution
   const leadSourceData = metrics.leadSourceDistribution || []
 
-  // Conversion Rates
-  const leadToOppRate = safeMetrics.leads.total > 0 ? (safeMetrics.opportunities.total / safeMetrics.leads.total) * 100 : 0
-  const oppToWonRate = safeMetrics.opportunities.total > 0 ? (safeMetrics.opportunities.won / safeMetrics.opportunities.total) * 100 : 0
-  const quoteApprovalRate = safeMetrics.quotations.total > 0 ? (safeMetrics.quotations.approved / safeMetrics.quotations.total) * 100 : 0
+  // Conversion Rates (all already declared above)
 
   // Total Pipeline Value
   const totalPipelineValue = safeMetrics.leads.value + safeMetrics.opportunities.value + safeMetrics.quotations.value

@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
         createUserParams.password = password
       }
 
-      clerkUser = await clerkClient.users.createUser(createUserParams)
+      const client = await clerkClient()
+      clerkUser = await client.users.createUser(createUserParams)
     } catch (clerkError: any) {
       console.error('Error creating user in Clerk:', clerkError)
       return NextResponse.json(
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
     const supabase = await createServerClient()
     
     // Ensure profile exists (this RPC handles creation if needed)
-    const { data: profile, error: profileError } = await supabase.rpc('ensure_profile', {
+    const { data: profile, error: profileError } = await (supabase as any).rpc('ensure_profile', {
       p_user_id: clerkUser.id,
       p_email: email,
     })
@@ -111,7 +112,8 @@ export async function POST(request: NextRequest) {
         updateData.department_id = departmentId
       }
 
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .update(updateData)
         .eq('id', profile.id)
@@ -129,7 +131,8 @@ export async function POST(request: NextRequest) {
         created_by: currentUserId,
       }))
 
-      const { error: roleError } = await supabase
+      const { error: roleError } = await (supabase as any)
+        .schema('core')
         .from('user_role_bindings')
         .upsert(roleBindings, {
           onConflict: 'user_id,role_id',
@@ -143,7 +146,8 @@ export async function POST(request: NextRequest) {
 
     // Update department if provided
     if (departmentId && profile?.id) {
-      const { error: deptError } = await supabase
+      const { error: deptError } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .update({ department_id: departmentId })
         .eq('id', profile.id)

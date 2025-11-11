@@ -127,10 +127,17 @@ export function useAgentChat(agentId: string | null) {
   const [hasRestored, setHasRestored] = useState(false)
 
   useEffect(() => {
-    if (!userId || !agentId || hasRestored) return
+    if (!userId || !agentId || hasRestored || typeof window === 'undefined') return
 
     const storageKey = `${STORAGE_PREFIX}${userId}-${agentId}`
-    const savedMessages = localStorage.getItem(storageKey)
+    let savedMessages: string | null = null
+    try {
+      savedMessages = localStorage.getItem(storageKey)
+    } catch (error) {
+      console.warn('Error reading from localStorage:', error)
+      setHasRestored(true)
+      return
+    }
 
     if (savedMessages) {
       try {
@@ -147,7 +154,7 @@ export function useAgentChat(agentId: string | null) {
 
   // Save messages to localStorage whenever they change (per agent)
   useEffect(() => {
-    if (!userId || !agentId || !hasRestored || chat.messages.length === 0) return
+    if (!userId || !agentId || !hasRestored || chat.messages.length === 0 || typeof window === 'undefined') return
 
     const storageKey = `${STORAGE_PREFIX}${userId}-${agentId}`
     try {
@@ -164,9 +171,13 @@ export function useAgentChat(agentId: string | null) {
   const resetChat = useCallback(() => {
     chat.setMessages([])
     setInput('')
-    if (userId && agentId) {
-      const storageKey = `${STORAGE_PREFIX}${userId}-${agentId}`
-      localStorage.removeItem(storageKey)
+    if (userId && agentId && typeof window !== 'undefined') {
+      try {
+        const storageKey = `${STORAGE_PREFIX}${userId}-${agentId}`
+        localStorage.removeItem(storageKey)
+      } catch (error) {
+        console.warn('Error removing from localStorage:', error)
+      }
     }
   }, [chat, userId, agentId])
 

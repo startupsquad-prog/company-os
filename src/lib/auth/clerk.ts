@@ -42,13 +42,14 @@ export async function getCurrentProfileId(): Promise<string | null> {
   }
 
   const supabase = await createServerClient()
-  const { data: profile } = await supabase
+  const { data: profile } = await (supabase as any)
     .from('profiles')
     .select('id')
     .eq('user_id', userId)
     .single()
 
-  return profile?.id || null
+  const profileTyped = profile as any
+  return profileTyped?.id || null
 }
 
 /**
@@ -67,7 +68,7 @@ export async function ensureProfile() {
   // Use the RPC function to ensure profile exists
   const email = user.emailAddresses[0]?.emailAddress || ''
 
-  const { data: profile, error } = await supabase.rpc('ensure_profile', {
+  const { data: profile, error } = await (supabase as any).rpc('ensure_profile', {
     p_user_id: user.id,
     p_email: email,
   })

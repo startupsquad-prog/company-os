@@ -35,10 +35,12 @@ function CompaniesPageContent() {
       setLoading(true)
       const supabase = createClient()
 
-      // Build query
-      let query = supabase
+      // Build query using schema-aware helper
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      let query = (supabase as any)
+        .schema('core')
         .from('companies')
-        .select('*, company_contacts(contacts(id, name, email, phone))', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .is('deleted_at', null)
 
       // Apply search
@@ -66,14 +68,46 @@ function CompaniesPageContent() {
       const to = from + pageSize - 1
       query = query.range(from, to)
 
-      const { data, error, count } = await query
+      const { data: companies, error, count } = await query
 
       if (error) throw error
 
+      // Fetch company_contacts separately
+      const companyIds = [...new Set((companies || []).map((c: any) => c.id))]
+      const { data: companyContacts } = companyIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('company_contacts')
+            .select('company_id, contact_id')
+            .in('company_id', companyIds)
+        : { data: [] }
+
+      const contactIds = [...new Set((companyContacts || []).map((cc: any) => cc.contact_id).filter(Boolean))]
+      const { data: contacts } = contactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name, email, phone')
+            .in('id', contactIds)
+        : { data: [] }
+
+      // Create lookup maps
+      const contactsMap = new Map((contacts || []).map((c: any) => [c.id, c]))
+      const companyContactsMap = new Map<string, any[]>()
+      ;(companyContacts || []).forEach((cc: any) => {
+        if (!companyContactsMap.has(cc.company_id)) {
+          companyContactsMap.set(cc.company_id, [])
+        }
+        const contact = contactsMap.get(cc.contact_id)
+        if (contact) {
+          companyContactsMap.get(cc.company_id)!.push(contact)
+        }
+      })
+
       // Transform data to include contacts
-      const transformedData: CompanyFull[] = (data || []).map((company: any) => ({
+      const transformedData: CompanyFull[] = (companies || []).map((company: any) => ({
         ...company,
-        contacts: company.company_contacts?.map((cc: any) => cc.contacts).filter(Boolean) || [],
+        contacts: companyContactsMap.get(company.id) || [],
       }))
 
       setCompanies(transformedData)
@@ -99,7 +133,7 @@ function CompaniesPageContent() {
       const supabase = createClient()
 
       if (editingCompany) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('companies')
           .update({
             ...data,
@@ -110,7 +144,7 @@ function CompaniesPageContent() {
         if (error) throw error
         toast.success('Company updated successfully')
       } else {
-        const { error } = await supabase.from('companies').insert({
+        const { error } = await (supabase as any).from('companies').insert({
           ...data,
           created_by: clerkUser.id,
         })
@@ -135,7 +169,7 @@ function CompaniesPageContent() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('companies')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', company.id)

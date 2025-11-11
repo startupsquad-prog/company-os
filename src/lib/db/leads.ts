@@ -23,17 +23,19 @@ async function getCurrentProfileId(supabase: Awaited<ReturnType<typeof createSer
     throw new Error('Unauthorized')
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = await (supabase as any)
     .from('profiles')
     .select('id')
     .eq('user_id', userId)
     .single()
 
-  if (!profile) {
+  const profileTyped = profile as any
+
+  if (!profileTyped) {
     throw new Error('Profile not found')
   }
 
-  return profile.id
+  return profileTyped.id
 }
 
 /**
@@ -125,13 +127,14 @@ export async function getLeads(
   }
 
   // Fetch related data separately (PostgREST doesn't support cross-schema joins)
+  const leadsTyped = (leads || []) as any[]
   const contactIds = [
-    ...new Set((leads || []).map((l) => l.contact_id).filter(Boolean) as string[]),
+    ...new Set(leadsTyped.map((l) => l.contact_id).filter(Boolean) as string[]),
   ]
   const companyIds = [
-    ...new Set((leads || []).map((l) => l.company_id).filter(Boolean) as string[]),
+    ...new Set(leadsTyped.map((l) => l.company_id).filter(Boolean) as string[]),
   ]
-  const ownerIds = [...new Set((leads || []).map((l) => l.owner_id).filter(Boolean) as string[])]
+  const ownerIds = [...new Set(leadsTyped.map((l) => l.owner_id).filter(Boolean) as string[])]
 
   // Fetch contacts
   const { data: contacts } =
@@ -169,7 +172,7 @@ export async function getLeads(
   const profilesMap = new Map((profiles || []).map((p) => [p.id, p]))
 
   // Combine leads with relations
-  let leadsWithRelations = (leads || []).map((lead) => ({
+  let leadsWithRelations = leadsTyped.map((lead: any) => ({
     ...lead,
     contact: lead.contact_id ? contactsMap.get(lead.contact_id) || null : null,
     company: lead.company_id ? companiesMap.get(lead.company_id) || null : null,
@@ -201,7 +204,7 @@ export async function getLeads(
   // Get last interaction date for each lead
   const leadsWithInteractions: LeadFull[] = await Promise.all(
     leadsWithRelations.map(async (lead) => {
-      const { data: lastInteraction } = await supabase
+      const { data: lastInteraction } = await (supabase as any)
         .from('interactions')
         .select('created_at')
         .eq('entity_type', 'lead')
@@ -211,17 +214,19 @@ export async function getLeads(
         .limit(1)
         .single()
 
-      const { count: interactionsCount } = await supabase
+      const { count: interactionsCount } = await (supabase as any)
         .from('interactions')
         .select('id', { count: 'exact', head: true })
         .eq('entity_type', 'lead')
         .eq('entity_id', lead.id)
         .is('deleted_at', null)
 
+      const lastInteractionTyped = lastInteraction as any
+
       return {
         ...lead,
         interactions_count: interactionsCount || 0,
-        last_interaction_at: lastInteraction?.created_at || null,
+        last_interaction_at: lastInteractionTyped?.created_at || null,
       } as LeadFull
     })
   )
@@ -245,7 +250,7 @@ export async function getLeadById(id: string): Promise<LeadFull | null> {
   // Use service role client to access crm schema
   const supabase = createServiceRoleClient()
 
-  const { data: lead, error } = await supabase
+  const { data: lead, error } = await (supabase as any)
     .from('leads')
     .select('*')
     .eq('id', id)
@@ -259,40 +264,42 @@ export async function getLeadById(id: string): Promise<LeadFull | null> {
     throw new Error(`Failed to fetch lead: ${error.message}`)
   }
 
-  if (!lead) {
+  const leadTyped = lead as any
+
+  if (!leadTyped) {
     return null
   }
 
   // Fetch related data separately
   const [contact, company, owner] = await Promise.all([
-    lead.contact_id
-      ? supabase
+    leadTyped.contact_id
+      ? (supabase as any)
           .schema('core')
           .from('contacts')
           .select('id, name, email, phone')
-          .eq('id', lead.contact_id)
+          .eq('id', leadTyped.contact_id)
           .single()
       : Promise.resolve({ data: null }),
-    lead.company_id
-      ? supabase
+    leadTyped.company_id
+      ? (supabase as any)
           .schema('core')
           .from('companies')
           .select('id, name, website, industry')
-          .eq('id', lead.company_id)
+          .eq('id', leadTyped.company_id)
           .single()
       : Promise.resolve({ data: null }),
-    lead.owner_id
-      ? supabase
+    leadTyped.owner_id
+      ? (supabase as any)
           .schema('core')
           .from('profiles')
           .select('id, first_name, last_name, email, avatar_url')
-          .eq('id', lead.owner_id)
+          .eq('id', leadTyped.owner_id)
           .single()
       : Promise.resolve({ data: null }),
   ])
 
   // Get interactions count and last interaction
-  const { data: lastInteraction } = await supabase
+  const { data: lastInteraction } = await (supabase as any)
     .schema('crm')
     .from('interactions')
     .select('created_at')
@@ -303,7 +310,7 @@ export async function getLeadById(id: string): Promise<LeadFull | null> {
     .limit(1)
     .single()
 
-  const { count: interactionsCount } = await supabase
+  const { count: interactionsCount } = await (supabase as any)
     .schema('crm')
     .from('interactions')
     .select('id', { count: 'exact', head: true })
@@ -311,13 +318,15 @@ export async function getLeadById(id: string): Promise<LeadFull | null> {
     .eq('entity_id', id)
     .is('deleted_at', null)
 
+  const lastInteractionTyped = lastInteraction as any
+
   return {
-    ...lead,
+    ...leadTyped,
     contact: contact.data,
     company: company.data,
     owner: owner.data,
     interactions_count: interactionsCount || 0,
-    last_interaction_at: lastInteraction?.created_at || null,
+    last_interaction_at: lastInteractionTyped?.created_at || null,
   } as LeadFull
 }
 
@@ -328,7 +337,7 @@ export async function createLead(data: CreateLeadInput): Promise<Lead> {
   const supabase = createServiceRoleClient()
   // Get user from anon client to respect auth
   const anonSupabase = await createServerClient()
-  const userId = await getCurrentUserId(anonSupabase)
+  const userId = await getCurrentUserId()
 
   const leadData = {
     ...data,
@@ -336,16 +345,17 @@ export async function createLead(data: CreateLeadInput): Promise<Lead> {
     created_by: userId,
   }
 
-  const { data: lead, error } = await supabase.from('leads').insert(leadData).select().single()
+  const { data: lead, error } = await (supabase as any).from('leads').insert(leadData).select().single()
 
   if (error) {
     throw new Error(`Failed to create lead: ${error.message}`)
   }
 
   // Create initial status history entry
-  await supabase.from('status_history').insert({
-    lead_id: lead.id,
-    status: lead.status,
+  const leadTyped = lead as any
+  await (supabase as any).from('status_history').insert({
+    lead_id: leadTyped.id,
+    status: leadTyped.status,
     previous_status: null,
     notes: 'Lead created',
     created_by: userId,
@@ -354,29 +364,31 @@ export async function createLead(data: CreateLeadInput): Promise<Lead> {
   // Trigger notification if lead has owner
   // Note: owner_id is a profile_id, we need to get the user_id for notifications
   // This is done asynchronously to not block lead creation
-  if (lead.owner_id) {
+  if (leadTyped.owner_id) {
     // Fetch owner user_id asynchronously to avoid blocking
-    supabase
+    ;(supabase as any)
       .from('profiles')
       .select('user_id')
-      .eq('id', lead.owner_id)
+      .eq('id', leadTyped.owner_id)
       .single()
-      .then(({ data: ownerProfile, error: profileError }) => {
+      .then(({ data: ownerProfile, error: profileError }: any) => {
         if (profileError) {
           console.error('Failed to get owner user_id for notification:', profileError)
           return
         }
 
-        if (ownerProfile?.user_id) {
+        const ownerProfileTyped = ownerProfile as any
+
+        if (ownerProfileTyped?.user_id) {
           import('@/lib/notifications/trigger-notification').then(({ triggerNotification }) => {
-            triggerNotification('lead', lead.id, 'assigned', 'lead_assigned', {
+            triggerNotification('lead', leadTyped.id, 'assigned', 'lead_assigned', {
               actorId: userId,
-              recipients: [ownerProfile.user_id],
+              recipients: [ownerProfileTyped.user_id],
             }).catch((err) => console.error('Failed to trigger lead assignment notification:', err))
           })
         }
       })
-      .catch((err) => {
+      .catch((err: any) => {
         // Don't fail lead creation if notification lookup fails
         console.error('Failed to lookup owner for notification:', err)
       })
@@ -392,16 +404,16 @@ export async function updateLead(id: string, data: Partial<CreateLeadInput>): Pr
   const supabase = createServiceRoleClient()
   // Get user from anon client to respect auth
   const anonSupabase = await createServerClient()
-  const userId = await getCurrentUserId(anonSupabase)
+  const userId = await getCurrentUserId()
 
   // Get current lead to check for owner_id and status changes
-  const { data: currentLead } = await supabase
+  const { data: currentLead } = await (supabase as any)
     .from('leads')
     .select('owner_id, status')
     .eq('id', id)
     .single()
 
-  const { data: lead, error } = await supabase
+  const { data: lead, error } = await (supabase as any)
     .from('leads')
     .update(data)
     .eq('id', id)
@@ -412,36 +424,40 @@ export async function updateLead(id: string, data: Partial<CreateLeadInput>): Pr
     throw new Error(`Failed to update lead: ${error.message}`)
   }
 
+  const currentLeadTyped = currentLead as any
+
   // Trigger notification if owner changed
-  if (data.owner_id && currentLead?.owner_id !== data.owner_id) {
+  if (data.owner_id && currentLeadTyped?.owner_id !== data.owner_id) {
     // Get user_id from profile_id asynchronously
-    supabase
+    ;(supabase as any)
       .from('profiles')
       .select('user_id')
       .eq('id', data.owner_id)
       .single()
-      .then(({ data: ownerProfile, error: profileError }) => {
+      .then(({ data: ownerProfile, error: profileError }: any) => {
         if (profileError || !ownerProfile?.user_id) {
           console.error('Failed to get owner user_id for notification:', profileError)
           return
         }
 
+        const ownerProfileTyped = ownerProfile as any
+
         import('@/lib/notifications/trigger-notification').then(({ triggerNotification }) => {
           triggerNotification('lead', id, 'assigned', 'lead_assigned', {
             actorId: userId,
-            recipients: [ownerProfile.user_id],
+            recipients: [ownerProfileTyped.user_id],
           }).catch((err) => console.error('Failed to trigger lead assignment notification:', err))
         })
       })
-      .catch((err) => console.error('Failed to lookup owner for notification:', err))
+      .catch((err: any) => console.error('Failed to lookup owner for notification:', err))
   }
 
   // Trigger notification if status changed
-  if (data.status && currentLead?.status !== data.status) {
+  if (data.status && currentLeadTyped?.status !== data.status) {
     const { triggerNotification } = await import('@/lib/notifications/trigger-notification')
     triggerNotification('lead', id, 'status_changed', 'lead_status_changed', {
       actorId: userId,
-      metadata: { previous_status: currentLead?.status, new_status: data.status },
+      metadata: { previous_status: currentLeadTyped?.status, new_status: data.status },
     }).catch((err) => console.error('Failed to trigger lead status change notification:', err))
   }
 
@@ -454,7 +470,7 @@ export async function updateLead(id: string, data: Partial<CreateLeadInput>): Pr
 export async function deleteLead(id: string): Promise<void> {
   const supabase = createServiceRoleClient()
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('leads')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
@@ -471,19 +487,20 @@ export async function updateLeadStatus(input: UpdateLeadStatusInput): Promise<Le
   const supabase = createServiceRoleClient()
   // Get user from anon client to respect auth
   const anonSupabase = await createServerClient()
-  const userId = await getCurrentUserId(anonSupabase)
+  const userId = await getCurrentUserId()
 
   // Get current status
-  const { data: currentLead } = await supabase
+  const { data: currentLead } = await (supabase as any)
     .from('leads')
     .select('status')
     .eq('id', input.lead_id)
     .single()
 
-  const previousStatus = currentLead?.status || null
+  const currentLeadTyped = currentLead as any
+  const previousStatus = currentLeadTyped?.status || null
 
   // Update lead status
-  const { data: lead, error } = await supabase
+  const { data: lead, error } = await (supabase as any)
     .from('leads')
     .update({ status: input.status })
     .eq('id', input.lead_id)
@@ -495,7 +512,7 @@ export async function updateLeadStatus(input: UpdateLeadStatusInput): Promise<Le
   }
 
   // Create status history entry
-  await supabase.from('status_history').insert({
+  await (supabase as any).from('status_history').insert({
     lead_id: input.lead_id,
     status: input.status,
     previous_status: previousStatus,
@@ -521,7 +538,7 @@ export async function updateLeadStatus(input: UpdateLeadStatusInput): Promise<Le
 export async function getLeadInteractions(leadId: string): Promise<Interaction[]> {
   const supabase = createServiceRoleClient()
 
-  const { data: interactions, error } = await supabase
+  const { data: interactions, error } = await (supabase as any)
     .from('interactions')
     .select('*')
     .eq('entity_type', 'lead')
@@ -534,12 +551,13 @@ export async function getLeadInteractions(leadId: string): Promise<Interaction[]
   }
 
   // Fetch profiles separately
+  const interactionsTyped = (interactions || []) as any[]
   const createdByIds = [
-    ...new Set((interactions || []).map((i) => i.created_by).filter(Boolean) as string[]),
+    ...new Set(interactionsTyped.map((i: any) => i.created_by).filter(Boolean) as string[]),
   ]
   const { data: profiles } =
     createdByIds.length > 0
-      ? await supabase
+      ? await (supabase as any)
           .schema('core')
           .from('profiles')
           .select('id, first_name, last_name, email, avatar_url')
@@ -547,9 +565,10 @@ export async function getLeadInteractions(leadId: string): Promise<Interaction[]
       : { data: [] }
 
   // Create lookup map (note: profiles.user_id maps to interactions.created_by)
-  const profilesMap = new Map((profiles || []).map((p) => [p.user_id, p]))
+  const profilesTyped = (profiles || []) as any[]
+  const profilesMap = new Map(profilesTyped.map((p: any) => [p.user_id, p]))
 
-  return (interactions || []).map((interaction) => ({
+  return interactionsTyped.map((interaction: any) => ({
     ...interaction,
     created_by_profile: interaction.created_by
       ? profilesMap.get(interaction.created_by) || null
@@ -564,14 +583,14 @@ export async function addInteraction(input: CreateInteractionInput): Promise<Int
   const supabase = createServiceRoleClient()
   // Get user from anon client to respect auth
   const anonSupabase = await createServerClient()
-  const userId = await getCurrentUserId(anonSupabase)
+  const userId = await getCurrentUserId()
 
   const interactionData = {
     ...input,
     created_by: userId,
   }
 
-  const { data: interaction, error } = await supabase
+  const { data: interaction, error } = await (supabase as any)
     .from('interactions')
     .insert(interactionData)
     .select('*')
@@ -603,7 +622,7 @@ export async function addInteraction(input: CreateInteractionInput): Promise<Int
 export async function getLeadStatusHistory(leadId: string): Promise<StatusHistoryEntry[]> {
   const supabase = createServiceRoleClient()
 
-  const { data: history, error } = await supabase
+  const { data: history, error } = await (supabase as any)
     .from('status_history')
     .select('*')
     .eq('lead_id', leadId)
@@ -614,12 +633,13 @@ export async function getLeadStatusHistory(leadId: string): Promise<StatusHistor
   }
 
   // Fetch profiles separately
+  const historyTyped = (history || []) as any[]
   const createdByIds = [
-    ...new Set((history || []).map((h) => h.created_by).filter(Boolean) as string[]),
+    ...new Set(historyTyped.map((h: any) => h.created_by).filter(Boolean) as string[]),
   ]
   const { data: profiles } =
     createdByIds.length > 0
-      ? await supabase
+      ? await (supabase as any)
           .schema('core')
           .from('profiles')
           .select('id, first_name, last_name, email')
@@ -627,9 +647,10 @@ export async function getLeadStatusHistory(leadId: string): Promise<StatusHistor
       : { data: [] }
 
   // Create lookup map
-  const profilesMap = new Map((profiles || []).map((p) => [p.user_id, p]))
+  const profilesTyped = (profiles || []) as any[]
+  const profilesMap = new Map(profilesTyped.map((p: any) => [p.user_id, p]))
 
-  return (history || []).map((entry) => ({
+  return historyTyped.map((entry: any) => ({
     ...entry,
     created_by_profile: entry.created_by ? profilesMap.get(entry.created_by) || null : null,
   })) as StatusHistoryEntry[]

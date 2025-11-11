@@ -16,6 +16,7 @@ import { useUserRole } from '@/lib/hooks/useUserRole'
 import { useRole } from '@/lib/roles/use-role'
 import { RollingUpdatesBanner } from '@/components/rolling-updates-banner'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { ClientOnly } from '@/components/client-only'
 
 export function DashboardTopbar() {
   const [searchOpen, setSearchOpen] = useState(false)
@@ -103,7 +104,9 @@ export function DashboardTopbar() {
           )}
           
           {/* User Button - Always visible */}
-        <UserButton afterSignOutUrl="/login" />
+        <ClientOnly>
+          <UserButton afterSignOutUrl="/login" />
+        </ClientOnly>
           
           {/* Mobile Search Button - Only on mobile */}
           {isMobile && (

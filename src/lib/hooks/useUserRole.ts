@@ -46,14 +46,14 @@ export function useUserRole(): UseUserRoleReturn {
 
         // Set Clerk user ID in Supabase session for RLS policies
         try {
-          await supabase.rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
+          await (supabase as any).rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
         } catch (e) {
           console.warn('Failed to set Clerk user ID in Supabase session:', e)
         }
 
         // Use RPC function to get user roles (more reliable with RLS)
         console.log('[useUserRole] Calling get_user_roles with user_id:', clerkUser.id)
-        const { data: rolesData, error: rolesError } = await supabase.rpc('get_user_roles', {
+        const { data: rolesData, error: rolesError } = await (supabase as any).rpc('get_user_roles', {
           p_user_id: clerkUser.id,
         })
         

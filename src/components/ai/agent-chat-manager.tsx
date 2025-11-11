@@ -49,7 +49,7 @@ export function AgentChatManager() {
 
 interface AgentChatWrapperProps {
   agentId: string
-  iconRef: React.RefObject<HTMLButtonElement>
+  iconRef: React.RefObject<HTMLButtonElement | null>
   isOpen: boolean
   onClose: () => void
 }

@@ -52,7 +52,7 @@ export function NavUser() {
         const supabase = createClient()
 
         // Get profile
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profileData, error: profileError } = await (supabase as any)
           .from('profiles')
           .select('*')
           .eq('user_id', clerkUser.id)
@@ -62,16 +62,18 @@ export function NavUser() {
           console.error('Error fetching profile:', profileError)
         }
 
-        if (profileData) {
+        const profileTyped = profileData as any
+
+        if (profileTyped) {
           const fullName =
-            [profileData.first_name, profileData.last_name].filter(Boolean).join(' ') ||
+            [profileTyped.first_name, profileTyped.last_name].filter(Boolean).join(' ') ||
             clerkUser.emailAddresses[0]?.emailAddress?.split('@')[0] ||
             'User'
 
-          const avatarSeed = profileData.email || clerkUser.emailAddresses[0]?.emailAddress || clerkUser.id || 'default'
+          const avatarSeed = profileTyped.email || clerkUser.emailAddresses[0]?.emailAddress || clerkUser.id || 'default'
           setProfile({
             name: fullName,
-            email: profileData.email || clerkUser.emailAddresses[0]?.emailAddress || '',
+            email: profileTyped.email || clerkUser.emailAddresses[0]?.emailAddress || '',
             avatar: getDiceBearAvatar(avatarSeed),
           })
         } else {

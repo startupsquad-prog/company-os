@@ -62,9 +62,12 @@ function KnowledgeArticlesPageContent() {
       setLoading(true)
       const supabase = createClient()
 
-      let query = supabase
+      // Use schema-aware query - knowledge_articles is in common_util schema
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      let query = (supabase as any)
+        .schema('common_util')
         .from('knowledge_articles')
-        .select('*, category:knowledge_categories(id, name), author:profiles(id, first_name, last_name)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .is('deleted_at', null)
 
       if (search) {
@@ -82,11 +85,44 @@ function KnowledgeArticlesPageContent() {
       const to = from + pageSize - 1
       query = query.range(from, to)
 
-      const { data, error, count } = await query
+      const { data: articles, error, count } = await query
 
       if (error) throw error
 
-      setArticles(data || [])
+      // Fetch related data separately
+      const categoryIds = [...new Set((articles || []).map((a: any) => a.category_id).filter(Boolean))]
+      const authorIds = [...new Set((articles || []).map((a: any) => a.author_id).filter(Boolean))]
+
+      // Fetch categories
+      const { data: categories } = categoryIds.length > 0
+        ? await (supabase as any)
+            .schema('common_util')
+            .from('knowledge_categories')
+            .select('id, name')
+            .in('id', categoryIds)
+        : { data: [] }
+
+      // Fetch authors (profiles)
+      const { data: profiles } = authorIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', authorIds)
+        : { data: [] }
+
+      // Create lookup maps
+      const categoriesMap = new Map((categories || []).map((c: any) => [c.id, c]))
+      const profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+      // Combine articles with relations
+      const articlesWithRelations = (articles || []).map((article: any) => ({
+        ...article,
+        category: article.category_id ? categoriesMap.get(article.category_id) || null : null,
+        author: article.author_id ? profilesMap.get(article.author_id) || null : null,
+      }))
+
+      setArticles(articlesWithRelations)
       setPageCount(count ? Math.ceil(count / pageSize) : 0)
     } catch (error: any) {
       console.error('Error fetching articles:', error)
@@ -121,7 +157,7 @@ function KnowledgeArticlesPageContent() {
       const slug = formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
       if (editingArticle) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('knowledge_articles')
           .update({
             ...formData,
@@ -133,7 +169,7 @@ function KnowledgeArticlesPageContent() {
         if (error) throw error
         toast.success('Article updated successfully')
       } else {
-        const { error } = await supabase.from('knowledge_articles').insert({
+        const { error } = await (supabase as any).from('knowledge_articles').insert({
           ...formData,
           slug,
           author_id: clerkUser.id,
@@ -159,7 +195,7 @@ function KnowledgeArticlesPageContent() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('knowledge_articles')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', article.id)

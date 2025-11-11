@@ -108,7 +108,7 @@ export const createUserColumns = (
     filterFn: (row, id, value) => {
       const department = row.getValue(id) as UserFull['department']
       if (!Array.isArray(value) || value.length === 0) return true
-      return department && value.includes(department.id)
+      return !!(department && value.includes(department.id))
     },
   },
   {

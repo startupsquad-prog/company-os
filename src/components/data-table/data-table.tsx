@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ColumnDef,
   flexRender,
@@ -50,6 +50,9 @@ interface DataTableProps<TData, TValue> {
     title: string
     options: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }[]
   }[]
+  // Controlled pagination props
+  page?: number
+  pageSize?: number
 }
 
 export function DataTable<TData, TValue>({
@@ -74,12 +77,27 @@ export function DataTable<TData, TValue>({
   addButtonIcon,
   renderCustomView,
   filterConfig = [],
+  page: controlledPage,
+  pageSize: controlledPageSize,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
+  const [pagination, setPagination] = useState({ 
+    pageIndex: controlledPage !== undefined ? controlledPage - 1 : 0, 
+    pageSize: controlledPageSize || 10 
+  })
+
+  // Sync pagination state with controlled props
+  useEffect(() => {
+    if (controlledPage !== undefined || controlledPageSize !== undefined) {
+      setPagination(prev => ({
+        pageIndex: controlledPage !== undefined ? controlledPage - 1 : prev.pageIndex,
+        pageSize: controlledPageSize !== undefined ? controlledPageSize : prev.pageSize,
+      }))
+    }
+  }, [controlledPage, controlledPageSize])
 
   const table = useReactTable({
     data,
@@ -126,7 +144,7 @@ export function DataTable<TData, TValue>({
 
     // Default table view
     return (
-      <div className="flex-1 overflow-x-auto overflow-y-auto rounded-md border min-h-0 overscroll-x-contain">
+      <div className="flex-1 overflow-x-auto overflow-y-auto rounded-md border min-h-0 w-full overscroll-x-contain">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -182,23 +200,25 @@ export function DataTable<TData, TValue>({
   }
 
   return (
-    <div className="flex flex-col space-y-4 min-h-0 flex-1 min-w-0 overflow-x-hidden">
-      <DataTableToolbar
-        table={table}
-        onSearchChange={onSearchChange}
-        view={view}
-        onViewChange={onViewChange}
-        data={data}
-        onAdd={onAdd}
-        onDateRangeChange={onDateRangeChange}
-        searchPlaceholder={searchPlaceholder}
-        addButtonText={addButtonText}
-        addButtonIcon={addButtonIcon}
-        filterConfig={filterConfig}
-      />
-      <div className="flex-1 min-h-0 flex flex-col min-w-0">{renderView()}</div>
+    <div className="flex flex-col h-full min-h-0 flex-1 min-w-0 overflow-x-hidden">
+      <div className="flex-shrink-0 mb-4">
+        <DataTableToolbar
+          table={table}
+          onSearchChange={onSearchChange}
+          view={view}
+          onViewChange={onViewChange}
+          data={data}
+          onAdd={onAdd}
+          onDateRangeChange={onDateRangeChange}
+          searchPlaceholder={searchPlaceholder}
+          addButtonText={addButtonText}
+          addButtonIcon={addButtonIcon}
+          filterConfig={filterConfig}
+        />
+      </div>
+      <div className="flex-1 min-h-0 flex flex-col min-w-0 overflow-hidden">{renderView()}</div>
       {(view === 'table' || view === 'list') && (
-        <div className="flex-shrink-0 bg-background border-t">
+        <div className="flex-shrink-0 bg-background border-t mt-4">
           <DataTablePagination table={table} />
         </div>
       )}

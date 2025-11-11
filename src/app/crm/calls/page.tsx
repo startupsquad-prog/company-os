@@ -34,9 +34,12 @@ function CallsPageContent() {
       setLoading(true)
       const supabase = createClient()
 
-      let query = supabase
+      // Use schema-aware query - calls is in crm schema
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      let query = (supabase as any)
+        .schema('crm')
         .from('calls')
-        .select('*, contact:contacts(id, name, phone), lead:leads(id, contact:contacts(id, name)), caller:profiles(id, first_name, last_name)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .is('deleted_at', null)
 
       if (search) {
@@ -66,11 +69,73 @@ function CallsPageContent() {
       const to = from + pageSize - 1
       query = query.range(from, to)
 
-      const { data, error, count } = await query
+      const { data: calls, error, count } = await query
 
       if (error) throw error
 
-      setCalls(data || [])
+      // Fetch related data separately
+      const contactIds = [...new Set((calls || []).map((c: any) => c.contact_id).filter(Boolean))]
+      const leadIds = [...new Set((calls || []).map((c: any) => c.lead_id).filter(Boolean))]
+      const callerIds = [...new Set((calls || []).map((c: any) => c.caller_id).filter(Boolean))]
+
+      // Fetch contacts
+      const { data: contacts } = contactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name, phone')
+            .in('id', contactIds)
+        : { data: [] }
+
+      // Fetch leads with their contacts
+      const { data: leads } = leadIds.length > 0
+        ? await (supabase as any)
+            .schema('crm')
+            .from('leads')
+            .select('id, contact_id')
+            .in('id', leadIds)
+        : { data: [] }
+
+      const leadContactIds = [...new Set((leads || []).map((l: any) => l.contact_id).filter(Boolean))]
+      const { data: leadContacts } = leadContactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name')
+            .in('id', leadContactIds)
+        : { data: [] }
+
+      // Fetch caller profiles
+      const { data: profiles } = callerIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', callerIds)
+        : { data: [] }
+
+      // Create lookup maps
+      const contactsMap = new Map((contacts || []).map((c: any) => [c.id, c]))
+      const leadsMap = new Map((leads || []).map((l: any) => [l.id, l]))
+      const leadContactsMap = new Map((leadContacts || []).map((c: any) => [c.id, c]))
+      const profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+      // Combine calls with relations
+      const callsWithRelations = (calls || []).map((call: any) => {
+        const contact = call.contact_id ? contactsMap.get(call.contact_id) : null
+        const lead = call.lead_id ? leadsMap.get(call.lead_id) : null
+        const leadContact = lead?.contact_id ? leadContactsMap.get(lead.contact_id) : null
+        const caller = call.caller_id ? profilesMap.get(call.caller_id) : null
+
+        return {
+          ...call,
+          contact,
+          lead: lead ? { ...lead, contact: leadContact } : null,
+          caller,
+        }
+      })
+
+      setCalls(callsWithRelations)
       setPageCount(count ? Math.ceil(count / pageSize) : 0)
     } catch (error: any) {
       console.error('Error fetching calls:', error)
@@ -92,7 +157,7 @@ function CallsPageContent() {
       const supabase = createClient()
 
       if (editingCall) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('calls')
           .update({
             ...data,
@@ -103,7 +168,7 @@ function CallsPageContent() {
         if (error) throw error
         toast.success('Call updated successfully')
       } else {
-        const { error } = await supabase.from('calls').insert({
+        const { error } = await (supabase as any).from('calls').insert({
           ...data,
           caller_id: clerkUser.id,
           created_by: clerkUser.id,
@@ -127,7 +192,7 @@ function CallsPageContent() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('calls')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', call.id)

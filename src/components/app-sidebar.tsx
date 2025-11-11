@@ -30,6 +30,8 @@ import {
   Clock,
   ShoppingBag,
   UserCog,
+  FolderKanban,
+  Lock,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -46,6 +48,7 @@ const EXISTING_PAGES = new Set([
   '/home',
   '/dashboard',
   '/tasks',
+  '/projects',
   '/users',
   '/employees',
   '/crm/leads',
@@ -61,6 +64,7 @@ const EXISTING_PAGES = new Set([
   '/documents',
   '/hr/attendance',
   '/subscriptions',
+  '/password-manager',
 ])
 
 // Module to project mapping
@@ -138,6 +142,11 @@ function getNavGroups(
         title: 'Tasks',
         url: '/tasks',
         icon: CheckSquare,
+      },
+      {
+        title: 'Projects',
+        url: '/projects',
+        icon: FolderKanban,
       },
     ],
   })
@@ -327,6 +336,12 @@ function getNavGroups(
         url: '/subscriptions',
         icon: CreditCard,
         comingSoon: !EXISTING_PAGES.has('/subscriptions'),
+      },
+      {
+        title: 'Password Manager',
+        url: '/password-manager',
+        icon: Lock,
+        comingSoon: !EXISTING_PAGES.has('/password-manager'),
       },
     ],
   })

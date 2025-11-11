@@ -1,4 +1,4 @@
-import { createServerClient } from '@/lib/supabase/server'
+import { fromCommonUtil, fromCore } from '@/lib/db/schema-helpers'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -17,12 +17,10 @@ export async function GET(request: Request) {
       })
     }
 
-    const supabase = await createServerClient()
     const searchTerm = `%${query}%`
 
     // Search tasks
-    const { data: tasks, error: tasksError } = await supabase
-      .from('tasks')
+    const { data: tasks, error: tasksError } = await fromCommonUtil('tasks')
       .select('id, title, description, status, priority, created_at')
       .or(`title.ilike.${searchTerm},description.ilike.${searchTerm}`)
       .is('deleted_at', null)
@@ -30,8 +28,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     // Search contacts
-    const { data: contacts, error: contactsError } = await supabase
-      .from('contacts')
+    const { data: contacts, error: contactsError } = await fromCore('contacts')
       .select('id, name, email, phone, contact_type, created_at')
       .or(`name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm}`)
       .is('deleted_at', null)
@@ -39,8 +36,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     // Search companies
-    const { data: companies, error: companiesError } = await supabase
-      .from('companies')
+    const { data: companies, error: companiesError } = await fromCore('companies')
       .select('id, name, legal_name, website, industry, created_at')
       .or(`name.ilike.${searchTerm},legal_name.ilike.${searchTerm},website.ilike.${searchTerm}`)
       .is('deleted_at', null)
@@ -48,8 +44,7 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
 
     // Search profiles (employees/users)
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
+    const { data: profiles, error: profilesError } = await fromCore('profiles')
       .select('id, first_name, last_name, email, phone, created_at')
       .or(
         `first_name.ilike.${searchTerm},last_name.ilike.${searchTerm},email.ilike.${searchTerm},phone.ilike.${searchTerm}`
@@ -99,4 +94,5 @@ export async function GET(request: Request) {
     )
   }
 }
+
 

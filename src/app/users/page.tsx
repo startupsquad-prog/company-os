@@ -63,7 +63,7 @@ function UsersPageContent() {
       // Set Clerk user ID in Supabase session for RLS policies
       if (clerkUser?.id) {
         try {
-          await supabase.rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
+          await (supabase as any).rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
         } catch (e) {
           console.warn('Failed to set Clerk user ID in Supabase session:', e)
         }
@@ -78,15 +78,12 @@ function UsersPageContent() {
         return
       }
 
-      // Build query for profiles with department
-      let query = supabase
+      // Build query using schema-aware helper
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      let query = (supabase as any)
+        .schema('core')
         .from('profiles')
-        .select(
-          `
-          *,
-          department:departments!profiles_department_id_fkey(id, name)
-        `
-        )
+        .select('*')
         .is('deleted_at', null)
 
       // Apply search
@@ -111,11 +108,24 @@ function UsersPageContent() {
         throw error
       }
 
+      // Fetch departments separately
+      const departmentIds = [...new Set((profilesData || []).map((p: any) => p.department_id).filter(Boolean))]
+      const { data: departments } = departmentIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('departments')
+            .select('id, name')
+            .in('id', departmentIds)
+        : { data: [] }
+
+      const departmentsMap = new Map((departments || []).map((d: any) => [d.id, d]))
+
       // Fetch roles for each user
       const usersWithRoles = await Promise.all(
         (profilesData || []).map(async (profile: any) => {
           // Get role bindings for this user
-          const { data: roleBindings } = await supabase
+          const { data: roleBindings } = await (supabase as any)
+            .schema('core')
             .from('user_role_bindings')
             .select('role_id')
             .eq('user_id', profile.user_id)
@@ -130,7 +140,8 @@ function UsersPageContent() {
 
           // Get role details
           const roleIds = roleBindings.map((rb: any) => rb.role_id)
-          const { data: roles } = await supabase
+          const { data: roles } = await (supabase as any)
+            .schema('core')
             .from('roles')
             .select('id, name, description')
             .in('id', roleIds)
@@ -138,6 +149,7 @@ function UsersPageContent() {
 
           return {
             ...profile,
+            department: profile.department_id ? departmentsMap.get(profile.department_id) || null : null,
             roles: roles || [],
             clerk_user_id: profile.user_id,
           } as UserFull
@@ -149,13 +161,15 @@ function UsersPageContent() {
       if (filters.length > 0) {
         filters.forEach((filter) => {
           if (filter.id === 'role' && filter.value && Array.isArray(filter.value)) {
+            const filterValue = filter.value as string[]
             filteredUsers = filteredUsers.filter((user) =>
-              user.roles.some((r) => filter.value.includes(r.name))
+              user.roles.some((r) => filterValue.includes(r.name))
             )
           }
           if (filter.id === 'department' && filter.value && Array.isArray(filter.value)) {
+            const filterValue = filter.value as string[]
             filteredUsers = filteredUsers.filter((user) =>
-              user.department_id && filter.value.includes(user.department_id)
+              user.department_id && filterValue.includes(user.department_id)
             )
           }
         })
@@ -232,25 +246,27 @@ function UsersPageContent() {
         const supabase = createClient()
 
         // Fetch roles
-        const { data: roles } = await supabase
+        const { data: roles } = await (supabase as any)
           .from('roles')
           .select('id, name')
           .is('deleted_at', null)
           .order('name')
 
         if (roles) {
-          setRoleOptions(roles.map((r) => ({ label: r.name, value: r.name })))
+          const rolesTyped = roles as any[]
+          setRoleOptions(rolesTyped.map((r) => ({ label: r.name, value: r.name })))
         }
 
         // Fetch departments
-        const { data: departments } = await supabase
+        const { data: departments } = await (supabase as any)
           .from('departments')
           .select('id, name')
           .is('deleted_at', null)
           .order('name')
 
         if (departments) {
-          setDepartmentOptions(departments.map((d) => ({ label: d.name, value: d.id })))
+          const departmentsTyped = departments as any[]
+          setDepartmentOptions(departmentsTyped.map((d) => ({ label: d.name, value: d.id })))
         }
       } catch (error) {
         console.error('Error fetching options:', error)
@@ -284,14 +300,14 @@ function UsersPageContent() {
       // Set Clerk user ID
       if (clerkUser?.id) {
         try {
-          await supabase.rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
+          await (supabase as any).rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
         } catch (e) {
           console.warn('Failed to set Clerk user ID:', e)
         }
       }
 
       // Soft delete profile
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('profiles')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', user.id)
@@ -313,7 +329,7 @@ function UsersPageContent() {
       // Set Clerk user ID
       if (clerkUser?.id) {
         try {
-          await supabase.rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
+          await (supabase as any).rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
         } catch (e) {
           console.warn('Failed to set Clerk user ID:', e)
         }
@@ -321,7 +337,7 @@ function UsersPageContent() {
 
       if (editingUser) {
         // Update existing user
-        const { error: profileError } = await supabase
+        const { error: profileError } = await (supabase as any)
           .from('profiles')
           .update({
             first_name: data.first_name,
@@ -362,7 +378,7 @@ function UsersPageContent() {
 
         // Add new role bindings
         if (rolesToAdd.length > 0) {
-          const { error: addError } = await supabase.from('user_role_bindings').insert(
+          const { error: addError } = await (supabase as any).from('user_role_bindings').insert(
             rolesToAdd.map((roleId) => ({
               user_id: editingUser.user_id,
               role_id: roleId,

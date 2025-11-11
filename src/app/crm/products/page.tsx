@@ -35,10 +35,12 @@ function ProductsPageContent() {
       setLoading(true)
       const supabase = createClient()
 
-      // Build query
-      let query = supabase
+      // Build query using schema-aware helper
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      let query = (supabase as any)
+        .schema('crm')
         .from('products')
-        .select('*, supplier:contacts!products_supplier_id_fkey(id, name, email), manufacturer:companies!products_manufacturer_id_fkey(id, name, industry)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .is('deleted_at', null)
 
       // Apply search
@@ -72,11 +74,44 @@ function ProductsPageContent() {
       const to = from + pageSize - 1
       query = query.range(from, to)
 
-      const { data, error, count } = await query
+      const { data: products, error, count } = await query
 
       if (error) throw error
 
-      setProducts(data || [])
+      // Fetch related data separately
+      const supplierIds = [...new Set((products || []).map((p: any) => p.supplier_id).filter(Boolean))]
+      const manufacturerIds = [...new Set((products || []).map((p: any) => p.manufacturer_id).filter(Boolean))]
+
+      // Fetch suppliers (contacts)
+      const { data: suppliers } = supplierIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name, email')
+            .in('id', supplierIds)
+        : { data: [] }
+
+      // Fetch manufacturers (companies)
+      const { data: manufacturers } = manufacturerIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('companies')
+            .select('id, name, industry')
+            .in('id', manufacturerIds)
+        : { data: [] }
+
+      // Create lookup maps
+      const suppliersMap = new Map((suppliers || []).map((s: any) => [s.id, s]))
+      const manufacturersMap = new Map((manufacturers || []).map((m: any) => [m.id, m]))
+
+      // Combine products with relations
+      const productsWithRelations = (products || []).map((product: any) => ({
+        ...product,
+        supplier: product.supplier_id ? suppliersMap.get(product.supplier_id) || null : null,
+        manufacturer: product.manufacturer_id ? manufacturersMap.get(product.manufacturer_id) || null : null,
+      }))
+
+      setProducts(productsWithRelations)
       setPageCount(count ? Math.ceil(count / pageSize) : 0)
     } catch (error: any) {
       console.error('Error fetching products:', error)
@@ -99,7 +134,7 @@ function ProductsPageContent() {
       const supabase = createClient()
 
       if (editingProduct) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('products')
           .update({
             ...data,
@@ -110,7 +145,7 @@ function ProductsPageContent() {
         if (error) throw error
         toast.success('Product updated successfully')
       } else {
-        const { error } = await supabase.from('products').insert({
+        const { error } = await (supabase as any).from('products').insert({
           ...data,
           created_by: clerkUser.id,
         })
@@ -135,7 +170,7 @@ function ProductsPageContent() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('products')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', product.id)

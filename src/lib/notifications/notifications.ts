@@ -27,7 +27,7 @@ export async function createNotification(data: NotificationInsert): Promise<Noti
     action_url: actionUrl,
   }
 
-  const { data: notification, error } = await supabase
+  const { data: notification, error } = await (supabase as any)
     .from('notifications')
     .insert(notificationData)
     .select()
@@ -58,7 +58,7 @@ export async function createNotificationsForUsers(
     action_url: actionUrl,
   }))
 
-  const { data: createdNotifications, error } = await supabase
+  const { data: createdNotifications, error } = await (supabase as any)
     .from('notifications')
     .insert(notifications)
     .select()
@@ -135,7 +135,7 @@ export async function getUserNotifications(
 export async function markAsRead(notificationId: string, userId: string): Promise<NotificationRow> {
   const supabase = await createServerClient()
 
-  const { data: notification, error } = await supabase
+  const { data: notification, error } = await (supabase as any)
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('id', notificationId)
@@ -157,13 +157,13 @@ export async function markAllAsRead(userId: string): Promise<number> {
   const supabase = await createServerClient()
 
   // Use the database function for efficiency
-  const { data, error } = await supabase.rpc('mark_all_notifications_read', {
+  const { data, error } = await (supabase as any).rpc('mark_all_notifications_read', {
     p_user_id: userId,
   })
 
   if (error) {
     // Fallback to direct update if function doesn't work
-    const { error: updateError } = await supabase
+    const { error: updateError } = await (supabase as any)
       .from('notifications')
       .update({ read_at: new Date().toISOString() })
       .eq('user_id', userId)
@@ -195,7 +195,7 @@ export async function getUnreadCount(userId: string): Promise<number> {
   const supabase = await createServerClient()
 
   // Use the database function for efficiency
-  const { data, error } = await supabase.rpc('get_unread_notification_count', {
+  const { data, error } = await (supabase as any).rpc('get_unread_notification_count', {
     p_user_id: userId,
   })
 
@@ -224,7 +224,7 @@ export async function getUnreadCount(userId: string): Promise<number> {
 export async function deleteNotification(notificationId: string, userId: string): Promise<void> {
   const supabase = await createServerClient()
 
-  const { error } = await supabase
+  const { error } = await (supabase as any)
     .from('notifications')
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', notificationId)
@@ -270,21 +270,23 @@ export async function updateNotificationPreference(
   const supabase = await createServerClient()
 
   // Try to update existing preference
-  const { data: existing } = await supabase
+  const { data: existing } = await (supabase as any)
     .from('notification_preferences')
     .select('*')
     .eq('user_id', userId)
     .eq('notification_type', notificationType)
     .single()
 
-  if (existing) {
-    const { data: preference, error } = await supabase
+  const existingTyped = existing as any
+
+  if (existingTyped) {
+    const { data: preference, error } = await (supabase as any)
       .from('notification_preferences')
       .update({
         ...updates,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', existing.id)
+      .eq('id', existingTyped.id)
       .select()
       .single()
 
@@ -295,7 +297,7 @@ export async function updateNotificationPreference(
     return preference as NotificationPreferencesRow
   } else {
     // Create new preference
-    const { data: preference, error } = await supabase
+    const { data: preference, error } = await (supabase as any)
       .from('notification_preferences')
       .insert({
         user_id: userId,
@@ -322,13 +324,15 @@ export async function isNotificationEnabled(
 ): Promise<boolean> {
   const supabase = await createServerClient()
 
-  const { data: preference } = await supabase
+  const { data: preference } = await (supabase as any)
     .from('notification_preferences')
     .select('enabled')
     .eq('user_id', userId)
     .eq('notification_type', notificationType)
     .single()
 
+  const preferenceTyped = preference as any
+
   // Default to enabled if no preference exists
-  return preference?.enabled !== false
+  return preferenceTyped?.enabled !== false
 }

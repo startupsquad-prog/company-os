@@ -28,7 +28,7 @@ export function EmailList({
   }
 
   return (
-    <ScrollArea className="h-full">
+    <ScrollArea className="flex-1 min-h-0">
       <div>
         {emails.map((email) => (
           <div

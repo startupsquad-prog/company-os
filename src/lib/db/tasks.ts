@@ -33,17 +33,19 @@ async function getCurrentProfileId(supabase: Awaited<ReturnType<typeof createSer
   }
 
   // Using public schema views for PostgREST compatibility
-  const { data: profile } = await supabase
+  const { data: profile } = await (supabase as any)
     .from('profiles')
     .select('id')
     .eq('user_id', userId)
     .single()
 
-  if (!profile) {
+  const profileTyped = profile as any
+
+  if (!profileTyped) {
     throw new Error('Profile not found')
   }
 
-  return profile.id
+  return profileTyped.id
 }
 
 /**
@@ -111,16 +113,18 @@ export async function getTasks(filter: TaskFilter = {}) {
   }
 
   // If filtering by assigned_to, filter in memory (RLS handles access)
-  let filteredTasks = tasks || []
+  const tasksTyped = (tasks || []) as any[]
+  let filteredTasks = tasksTyped
   if (filter.assigned_to) {
-    const assigneeQuery = await supabase
+    const assigneeQuery = await (supabase as any)
       .from('task_assignees')
       .select('task_id')
       .eq('profile_id', filter.assigned_to)
 
     if (assigneeQuery.data) {
-      const assignedTaskIds = new Set(assigneeQuery.data.map((a) => a.task_id))
-      filteredTasks = filteredTasks.filter((t) => assignedTaskIds.has(t.id))
+      const assigneeDataTyped = assigneeQuery.data as any[]
+      const assignedTaskIds = new Set(assigneeDataTyped.map((a: any) => a.task_id))
+      filteredTasks = filteredTasks.filter((t: any) => assignedTaskIds.has(t.id))
     }
   }
 
@@ -192,6 +196,8 @@ export async function getTaskById(id: string): Promise<TaskWithRelations | null>
     return null
   }
 
+  const taskTyped = task as any
+
   // Get assignees
   const { data: assignees } = await supabase
     .from('task_assignees')
@@ -213,12 +219,12 @@ export async function getTaskById(id: string): Promise<TaskWithRelations | null>
     .single()
 
   return {
-    ...task,
+    ...taskTyped,
     assignees: assignees || [],
     latest_status: latestStatus || null,
-    department: task.department || null,
-    created_by_profile: task.created_by_profile || null,
-    updated_by_profile: task.updated_by_profile || null,
+    department: taskTyped.department || null,
+    created_by_profile: taskTyped.created_by_profile || null,
+    updated_by_profile: taskTyped.updated_by_profile || null,
   } as TaskWithRelations
 }
 
@@ -235,7 +241,7 @@ export async function createTask(data: Omit<TaskInsert, 'id' | 'created_at' | 'u
     updated_by: profileId,
   }
 
-  const { data: task, error } = await supabase.from('tasks').insert(taskData).select().single()
+  const { data: task, error } = await (supabase as any).from('tasks').insert(taskData).select().single()
 
   if (error) {
     throw new Error(`Failed to create task: ${error.message}`)
@@ -277,7 +283,7 @@ export async function updateTask(id: string, data: TaskUpdate) {
     updated_by: profileId,
   }
 
-  const { data: task, error } = await supabase
+  const { data: task, error } = await (supabase as any)
     .from('tasks')
     .update(updateData)
     .eq('id', id)
@@ -327,7 +333,7 @@ export async function addComment(taskId: string, body: string) {
     body,
   }
 
-  const { data: comment, error } = await supabase
+  const { data: comment, error } = await (supabase as any)
     .from('task_comments')
     .insert(commentData)
     .select()
@@ -372,11 +378,13 @@ export async function assignUser(
   const currentProfileId = await getCurrentProfileId(supabase)
 
   // Get user_id from profile_id for notification
-  const { data: assigneeProfile } = await supabase
+  const { data: assigneeProfile } = await (supabase as any)
     .from('profiles')
     .select('user_id')
     .eq('id', profileId)
     .single()
+
+  const assigneeProfileTyped = assigneeProfile as any
 
   const assigneeData: TaskAssigneeInsert = {
     task_id: taskId,
@@ -384,7 +392,7 @@ export async function assignUser(
     role,
   }
 
-  const { data: assignee, error } = await supabase
+  const { data: assignee, error } = await (supabase as any)
     .from('task_assignees')
     .insert(assigneeData)
     .select()
@@ -393,7 +401,7 @@ export async function assignUser(
   if (error) {
     // If duplicate, return existing
     if (error.code === '23505') {
-      const { data: existing } = await supabase
+      const { data: existing } = await (supabase as any)
         .from('task_assignees')
         .select()
         .eq('task_id', taskId)
@@ -414,7 +422,7 @@ export async function assignUser(
   })
 
   // Trigger notification for assigned user
-  if (assigneeProfile?.user_id) {
+  if (assigneeProfileTyped?.user_id) {
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -441,7 +449,7 @@ export async function getOverdueTasksCount(assignedTo?: string): Promise<number>
 
   // If filtering by assigned_to, we need to get assigned task IDs first
   if (assignedTo) {
-    const { data: assignedTasks, error: assigneeError } = await supabase
+    const { data: assignedTasks, error: assigneeError } = await (supabase as any)
       .from('task_assignees')
       .select('task_id')
       .eq('profile_id', assignedTo)
@@ -454,7 +462,8 @@ export async function getOverdueTasksCount(assignedTo?: string): Promise<number>
       return 0
     }
 
-    const assignedTaskIds = assignedTasks.map((a) => a.task_id)
+    const assignedTasksTyped = assignedTasks as any[]
+    const assignedTaskIds = assignedTasksTyped.map((a: any) => a.task_id)
 
     const { count, error } = await supabase
       .from('tasks')
@@ -519,16 +528,18 @@ export async function getOverdueTasks(assignedTo?: string): Promise<TaskWithRela
   }
 
   // If filtering by assigned_to, filter in memory
-  let filteredTasks = tasks || []
+  const tasksTyped = (tasks || []) as any[]
+  let filteredTasks = tasksTyped
   if (assignedTo) {
-    const { data: assignedTasks } = await supabase
+    const { data: assignedTasks } = await (supabase as any)
       .from('task_assignees')
       .select('task_id')
       .eq('profile_id', assignedTo)
 
     if (assignedTasks) {
-      const assignedTaskIds = new Set(assignedTasks.map((a) => a.task_id))
-      filteredTasks = filteredTasks.filter((t) => assignedTaskIds.has(t.id))
+      const assignedTasksTyped = assignedTasks as any[]
+      const assignedTaskIds = new Set(assignedTasksTyped.map((a: any) => a.task_id))
+      filteredTasks = filteredTasks.filter((t: any) => assignedTaskIds.has(t.id))
     }
   }
 

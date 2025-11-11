@@ -16,6 +16,9 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
+  // useUser hook - must always be called (React hooks rule)
+  // ClerkProvider should always be present in layout.tsx
+  // If ClerkProvider fails to initialize, useUser will return null/undefined values
   const { user: clerkUser, isLoaded: userLoaded } = useUser()
   const supabase = createClient()
 
@@ -36,14 +39,14 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
       // Set Clerk user ID in Supabase session for RLS policies
       try {
-        await supabase.rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
+        await (supabase as any).rpc('set_clerk_user_id', { p_user_id: clerkUser.id })
       } catch (e) {
         console.warn('Failed to set Clerk user ID in Supabase session:', e)
       }
 
       // Fetch user roles (using public wrapper function)
       console.log('[RoleContext] Calling get_user_roles with Clerk user ID:', clerkUser.id)
-      const { data: rolesData, error: rolesError } = await supabase.rpc('get_user_roles', {
+      const { data: rolesData, error: rolesError } = await (supabase as any).rpc('get_user_roles', {
         p_user_id: clerkUser.id,
       })
 
@@ -70,7 +73,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
       // Fetch allowed modules (using public wrapper function)
       console.log('[RoleContext] Calling get_allowed_modules with Clerk user ID:', clerkUser.id)
-      const { data: modulesData, error: modulesError } = await supabase.rpc('get_allowed_modules', {
+      const { data: modulesData, error: modulesError } = await (supabase as any).rpc('get_allowed_modules', {
         p_user_id: clerkUser.id,
       })
 
@@ -89,7 +92,7 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Fetch permissions (using public wrapper function)
-      const { data: permissionsData, error: permissionsError } = await supabase.rpc(
+      const { data: permissionsData, error: permissionsError } = await (supabase as any).rpc(
         'get_user_permissions',
         {
           p_user_id: clerkUser.id,
@@ -111,17 +114,39 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
 
       // Set active role
       if (parsedRoles.length > 0) {
-        // Try to load from localStorage
-        const storedRoleId = localStorage.getItem(ACTIVE_ROLE_STORAGE_KEY)
+        // Try to load from localStorage (only on client side)
+        let storedRoleId: string | null = null
+        try {
+          if (typeof window !== 'undefined') {
+            storedRoleId = localStorage.getItem(ACTIVE_ROLE_STORAGE_KEY)
+          }
+        } catch (e) {
+          console.warn('Failed to read from localStorage:', e)
+        }
+
         const storedRole = storedRoleId ? parsedRoles.find((r) => r.role_id === storedRoleId) : null
 
         // Use stored role if valid, otherwise use first role
         const initialRole = storedRole || parsedRoles[0]
         setActiveRoleState(initialRole)
-        localStorage.setItem(ACTIVE_ROLE_STORAGE_KEY, initialRole.role_id)
+        
+        // Save to localStorage (only on client side)
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(ACTIVE_ROLE_STORAGE_KEY, initialRole.role_id)
+          }
+        } catch (e) {
+          console.warn('Failed to write to localStorage:', e)
+        }
       } else {
         setActiveRoleState(null)
-        localStorage.removeItem(ACTIVE_ROLE_STORAGE_KEY)
+        try {
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(ACTIVE_ROLE_STORAGE_KEY)
+          }
+        } catch (e) {
+          console.warn('Failed to remove from localStorage:', e)
+        }
       }
     } catch (error) {
       console.error('Error loading role data:', error)
@@ -134,12 +159,20 @@ export function RoleProvider({ children }: { children: React.ReactNode }) {
   const setActiveRole = useCallback(
     (role: Role | null) => {
       setActiveRoleState(role)
+      try {
+        if (typeof window !== 'undefined') {
+          if (role) {
+            localStorage.setItem(ACTIVE_ROLE_STORAGE_KEY, role.role_id)
+          } else {
+            localStorage.removeItem(ACTIVE_ROLE_STORAGE_KEY)
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to update localStorage:', e)
+      }
+      // Reload modules and permissions for the new role
       if (role) {
-        localStorage.setItem(ACTIVE_ROLE_STORAGE_KEY, role.role_id)
-        // Reload modules and permissions for the new role
         loadRoleData()
-      } else {
-        localStorage.removeItem(ACTIVE_ROLE_STORAGE_KEY)
       }
     },
     [loadRoleData]

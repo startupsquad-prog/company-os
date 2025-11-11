@@ -58,14 +58,15 @@ function OpportunitiesPageContent() {
       setLoading(true)
       const supabase = createClient()
 
-      let query = supabase
+      // Use schema-aware query - opportunities is in crm schema
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      let query = (supabase as any)
+        .schema('crm')
         .from('opportunities')
-        .select('*, lead:leads(id, status, value, contact:contacts(id, name, email), company:companies(id, name)), pipeline:pipelines(id, name), stage:stages(id, name, order_no)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .is('deleted_at', null)
 
-      if (search) {
-        query = query.or(`lead.contact.name.ilike.%${search}%`)
-      }
+      // Search will be handled client-side after fetching related data
 
       if (sorting.length > 0) {
         const sort = sorting[0]
@@ -78,11 +79,95 @@ function OpportunitiesPageContent() {
       const to = from + pageSize - 1
       query = query.range(from, to)
 
-      const { data, error, count } = await query
+      const { data: opportunities, error, count } = await query
 
       if (error) throw error
 
-      setOpportunities(data || [])
+      // Fetch related data separately (cross-schema joins don't work reliably)
+      const leadIds = [...new Set((opportunities || []).map((o: any) => o.lead_id).filter(Boolean))]
+      const pipelineIds = [...new Set((opportunities || []).map((o: any) => o.pipeline_id).filter(Boolean))]
+      const stageIds = [...new Set((opportunities || []).map((o: any) => o.stage_id).filter(Boolean))]
+
+      // Fetch leads with contacts and companies
+      const { data: leads } = leadIds.length > 0
+        ? await (supabase as any)
+            .schema('crm')
+            .from('leads')
+            .select('id, status, value, contact_id, company_id')
+            .in('id', leadIds)
+        : { data: [] }
+
+      const contactIds = [...new Set((leads || []).map((l: any) => l.contact_id).filter(Boolean))]
+      const companyIds = [...new Set((leads || []).map((l: any) => l.company_id).filter(Boolean))]
+
+      const { data: contacts } = contactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name, email')
+            .in('id', contactIds)
+        : { data: [] }
+
+      const { data: companies } = companyIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('companies')
+            .select('id, name')
+            .in('id', companyIds)
+        : { data: [] }
+
+      // Fetch pipelines and stages
+      const { data: pipelines } = pipelineIds.length > 0
+        ? await (supabase as any)
+            .schema('crm')
+            .from('pipelines')
+            .select('id, name')
+            .in('id', pipelineIds)
+        : { data: [] }
+
+      const { data: stages } = stageIds.length > 0
+        ? await (supabase as any)
+            .schema('crm')
+            .from('stages')
+            .select('id, name, pipeline_id, order_no')
+            .in('id', stageIds)
+        : { data: [] }
+
+      // Create lookup maps
+      const leadsMap = new Map((leads || []).map((l: any) => [l.id, l]))
+      const contactsMap = new Map((contacts || []).map((c: any) => [c.id, c]))
+      const companiesMap = new Map((companies || []).map((c: any) => [c.id, c]))
+      const pipelinesMap = new Map((pipelines || []).map((p: any) => [p.id, p]))
+      const stagesMap = new Map((stages || []).map((s: any) => [s.id, s]))
+
+      // Combine opportunities with relations
+      const opportunitiesWithRelations = (opportunities || []).map((opp: any) => {
+        const lead = opp.lead_id ? leadsMap.get(opp.lead_id) : null
+        const contact = lead?.contact_id ? contactsMap.get(lead.contact_id) : null
+        const company = lead?.company_id ? companiesMap.get(lead.company_id) : null
+        const pipeline = opp.pipeline_id ? pipelinesMap.get(opp.pipeline_id) : null
+        const stage = opp.stage_id ? stagesMap.get(opp.stage_id) : null
+
+        return {
+          ...opp,
+          lead: lead ? { ...lead, contact, company } : null,
+          pipeline,
+          stage,
+        }
+      })
+
+      // Apply client-side search if needed
+      let filteredOpportunities = opportunitiesWithRelations
+      if (search) {
+        const searchLower = search.toLowerCase()
+        filteredOpportunities = opportunitiesWithRelations.filter((opp: any) => {
+          const leadName = opp.lead?.contact?.name || ''
+          const companyName = opp.lead?.company?.name || ''
+          return leadName.toLowerCase().includes(searchLower) || companyName.toLowerCase().includes(searchLower)
+        })
+      }
+
+      setOpportunities(filteredOpportunities)
       setPageCount(count ? Math.ceil(count / pageSize) : 0)
     } catch (error: any) {
       console.error('Error fetching opportunities:', error)
@@ -98,11 +183,27 @@ function OpportunitiesPageContent() {
     const fetchOptions = async () => {
       const supabase = createClient()
       const [leadsRes, pipelinesRes, stagesRes] = await Promise.all([
-        supabase.from('leads').select('id, contact:contacts(id, name)').is('deleted_at', null).limit(100),
-        supabase.from('pipelines').select('id, name').is('deleted_at', null),
-        supabase.from('stages').select('id, name, pipeline_id').is('deleted_at', null),
+        (supabase as any).schema('crm').from('leads').select('id, contact_id').is('deleted_at', null).limit(100),
+        (supabase as any).schema('crm').from('pipelines').select('id, name').is('deleted_at', null),
+        (supabase as any).schema('crm').from('stages').select('id, name, pipeline_id').is('deleted_at', null),
       ])
-      setLeads(leadsRes.data || [])
+      
+      // Fetch contacts separately for leads
+      const contactIds = [...new Set((leadsRes.data || []).map((l: any) => l.contact_id).filter(Boolean))]
+      const { data: contacts } = contactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name')
+            .in('id', contactIds)
+        : { data: [] }
+      
+      const contactsMap = new Map((contacts || []).map((c: any) => [c.id, c]))
+      const leadsWithContacts = (leadsRes.data || []).map((l: any) => ({
+        id: l.id,
+        contact: l.contact_id ? contactsMap.get(l.contact_id) : null,
+      }))
+      setLeads(leadsWithContacts)
       setPipelines(pipelinesRes.data || [])
       setStages(stagesRes.data || [])
     }
@@ -117,7 +218,7 @@ function OpportunitiesPageContent() {
       const supabase = createClient()
 
       if (editingOpportunity) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('opportunities')
           .update({
             ...formData,
@@ -128,7 +229,7 @@ function OpportunitiesPageContent() {
         if (error) throw error
         toast.success('Opportunity updated successfully')
       } else {
-        const { error } = await supabase.from('opportunities').insert({
+        const { error } = await (supabase as any).from('opportunities').insert({
           ...formData,
           created_by: clerkUser.id,
         })
@@ -152,7 +253,7 @@ function OpportunitiesPageContent() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('opportunities')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', opportunity.id)

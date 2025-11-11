@@ -59,3 +59,7 @@ When implementing auto-profile creation on Clerk signup:
 3. Assign default role if needed
 
 
+
+
+
+

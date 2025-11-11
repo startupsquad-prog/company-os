@@ -42,7 +42,7 @@ export async function createServerClient() {
     if (userId) {
       // Set the user ID in the session using RPC call
       // This makes it available to get_clerk_user_id() function in RLS policies
-      await client.rpc('set_clerk_user_id', { p_user_id: userId })
+      await (client as any).rpc('set_clerk_user_id', { p_user_id: userId })
     }
   } catch (error) {
     // If setting user ID fails, log but don't throw

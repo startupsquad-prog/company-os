@@ -362,3 +362,7 @@ export function getDepartmentColumn(resource: Resource): string | null {
   return columns[0] || null
 }
 
+
+
+
+

@@ -89,7 +89,7 @@ export function LeadForm({ lead, open, onOpenChange, onSuccess }: LeadFormProps)
         tags: data.tags
           ? Array.isArray(data.tags)
             ? data.tags
-            : data.tags.split(',').map((t) => t.trim())
+            : data.tags.split(',').map((t: string) => t.trim())
           : null,
       }
 

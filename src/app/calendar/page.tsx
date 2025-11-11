@@ -59,9 +59,12 @@ function CalendarPageContent() {
       const monthStart = startOfMonth(currentDate)
       const monthEnd = endOfMonth(currentDate)
 
-      const { data, error } = await supabase
+      // Use schema-aware query - events is in common_util schema
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      const { data: events, error } = await (supabase as any)
+        .schema('common_util')
         .from('events')
-        .select('*, organizer:profiles(id, first_name, last_name), participants:event_participants(profile:profiles(id, first_name, last_name), status)')
+        .select('*')
         .gte('start_time', monthStart.toISOString())
         .lte('start_time', monthEnd.toISOString())
         .is('deleted_at', null)
@@ -69,7 +72,59 @@ function CalendarPageContent() {
 
       if (error) throw error
 
-      setEvents(data || [])
+      // Fetch related data separately
+      const organizerIds = [...new Set((events || []).map((e: any) => e.organizer_id).filter(Boolean))]
+      const eventIds = [...new Set((events || []).map((e: any) => e.id))]
+
+      // Fetch organizers (profiles)
+      const { data: organizers } = organizerIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', organizerIds)
+        : { data: [] }
+
+      // Fetch participants
+      const { data: participants } = eventIds.length > 0
+        ? await (supabase as any)
+            .schema('common_util')
+            .from('event_participants')
+            .select('event_id, profile_id, status')
+            .in('event_id', eventIds)
+        : { data: [] }
+
+      const participantProfileIds = [...new Set((participants || []).map((p: any) => p.profile_id).filter(Boolean))]
+      const { data: participantProfiles } = participantProfileIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', participantProfileIds)
+        : { data: [] }
+
+      // Create lookup maps
+      const organizersMap = new Map((organizers || []).map((o: any) => [o.id, o]))
+      const participantProfilesMap = new Map((participantProfiles || []).map((p: any) => [p.id, p]))
+      const eventParticipantsMap = new Map<string, any[]>()
+      ;(participants || []).forEach((p: any) => {
+        if (!eventParticipantsMap.has(p.event_id)) {
+          eventParticipantsMap.set(p.event_id, [])
+        }
+        const profile = participantProfilesMap.get(p.profile_id)
+        if (profile) {
+          eventParticipantsMap.get(p.event_id)!.push({ ...p, profile })
+        }
+      })
+
+      // Combine events with relations
+      const eventsWithRelations = (events || []).map((event: any) => ({
+        ...event,
+        organizer: event.organizer_id ? organizersMap.get(event.organizer_id) || null : null,
+        participants: eventParticipantsMap.get(event.id) || [],
+      }))
+
+      setEvents(eventsWithRelations)
     } catch (error: any) {
       console.error('Error fetching events:', error)
       toast.error('Failed to load events')
@@ -90,7 +145,8 @@ function CalendarPageContent() {
       const supabase = createClient()
 
       if (editingEvent) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
+          .schema('common_util')
           .from('events')
           .update({
             ...formData,
@@ -101,7 +157,7 @@ function CalendarPageContent() {
         if (error) throw error
         toast.success('Event updated successfully')
       } else {
-        const { error } = await supabase.from('events').insert({
+        const { error } = await (supabase as any).schema('common_util').from('events').insert({
           ...formData,
           created_by: clerkUser.id,
         })
@@ -125,7 +181,8 @@ function CalendarPageContent() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
+        .schema('common_util')
         .from('events')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', event.id)

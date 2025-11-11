@@ -31,6 +31,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
+import { SubscriptionMetrics } from './components/subscription-metrics'
+import { SubscriptionDetailsModal } from './components/subscription-details-modal'
 
 function SubscriptionsPageContent() {
   const { user: clerkUser } = useUser()
@@ -39,6 +41,8 @@ function SubscriptionsPageContent() {
   const [initialLoading, setInitialLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [editingSubscription, setEditingSubscription] = useState<SubscriptionFull | null>(null)
+  const [selectedSubscription, setSelectedSubscription] = useState<SubscriptionFull | null>(null)
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [pageCount, setPageCount] = useState(0)
@@ -61,100 +65,134 @@ function SubscriptionsPageContent() {
     notes: '',
   })
   const [vendors, setVendors] = useState<Array<{ id: string; name: string }>>([])
+  const [allSubscriptions, setAllSubscriptions] = useState<SubscriptionFull[]>([])
 
   const fetchSubscriptions = useCallback(async () => {
     if (!clerkUser?.id) return
 
     try {
       setLoading(true)
-      const supabase = createClient()
 
-      let query = supabase
-        .from('subscriptions')
-        .select('*, vendor:contacts(id, name), owner:profiles(id, first_name, last_name)', { count: 'exact' })
-        .is('deleted_at', null)
+      // Build query parameters - matching tickets pattern exactly
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: pageSize.toString(),
+        ...(search ? { search } : {}),
+      })
 
-      if (search) {
-        query = query.or(`subscription_name.ilike.%${search}%,vendor_name.ilike.%${search}%,plan_tier.ilike.%${search}%`)
-      }
-
+      // Add status filter
       const statusFilter = filters.find((f) => f.id === 'status')
       if (statusFilter && statusFilter.value) {
         const values = Array.isArray(statusFilter.value) ? statusFilter.value : [statusFilter.value]
-        query = query.in('status', values)
+        params.append('status', values.join(','))
       }
 
+      // Add sorting
       if (sorting.length > 0) {
-        const sort = sorting[0]
-        query = query.order(sort.id, { ascending: sort.desc !== true })
-      } else {
-        query = query.order('created_at', { ascending: false })
+        params.append('sortField', sorting[0].id || 'created_at')
+        params.append('sortDirection', sorting[0].desc ? 'desc' : 'asc')
       }
 
-      const from = (page - 1) * pageSize
-      const to = from + pageSize - 1
-      query = query.range(from, to)
+      const response = await fetch(`/api/unified/subscriptions?${params.toString()}`)
 
-      const { data, error, count } = await query
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+      }
 
-      if (error) throw error
+      const result = await response.json()
 
-      setSubscriptions(data || [])
-      setPageCount(count ? Math.ceil(count / pageSize) : 0)
+      setSubscriptions(result.data || [])
+      setPageCount(result.totalPages || 0)
     } catch (error: any) {
       console.error('Error fetching subscriptions:', error)
-      toast.error('Failed to load subscriptions')
+      toast.error(`Failed to load subscriptions: ${error.message || 'Unknown error'}`)
+      setSubscriptions([])
+      setPageCount(0)
     } finally {
       setLoading(false)
       setInitialLoading(false)
     }
   }, [clerkUser?.id, page, pageSize, sorting, filters, search])
 
+  // Fetch all subscriptions for metrics (unpaginated)
+  const fetchAllSubscriptions = useCallback(async () => {
+    if (!clerkUser?.id) return
+
+    try {
+      // Build query parameters for all subscriptions (no pagination)
+      const params = new URLSearchParams({
+        page: '1',
+        pageSize: '1000', // Large number to get all subscriptions
+      })
+
+      const response = await fetch(`/api/unified/subscriptions?${params.toString()}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const result = await response.json()
+      setAllSubscriptions(result.data || [])
+    } catch (error: any) {
+      console.error('Error fetching all subscriptions for metrics:', error)
+      // Set empty array on error so metrics don't break
+      setAllSubscriptions([])
+    }
+  }, [clerkUser?.id])
+
   useEffect(() => {
     fetchSubscriptions()
+    fetchAllSubscriptions()
     const fetchVendors = async () => {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('contacts')
-        .select('id, name')
-        .is('deleted_at', null)
-        .limit(100)
-      setVendors(data || [])
+      try {
+        const supabase = createClient()
+        // Use schema-aware query - contacts is in core schema
+        const { data } = await (supabase as any)
+          .schema('core')
+          .from('contacts')
+          .select('id, name')
+          .is('deleted_at', null)
+          .limit(100)
+        setVendors(data || [])
+      } catch (error) {
+        console.error('Error fetching vendors:', error)
+        setVendors([])
+      }
     }
     fetchVendors()
-  }, [fetchSubscriptions])
+  }, [fetchSubscriptions, fetchAllSubscriptions, clerkUser?.id])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!clerkUser?.id || !formData.subscription_name.trim()) return
 
     try {
-      const supabase = createClient()
+      const url = '/api/unified/subscriptions'
+      const method = editingSubscription ? 'PATCH' : 'POST'
 
-      if (editingSubscription) {
-        const { error } = await supabase
-          .from('subscriptions')
-          .update({
-            ...formData,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', editingSubscription.id)
-
-        if (error) throw error
-        toast.success('Subscription updated successfully')
-      } else {
-        const { error } = await supabase.from('subscriptions').insert({
-          ...formData,
-          created_by: clerkUser.id,
-        })
-
-        if (error) throw error
-        toast.success('Subscription created successfully')
+      const payload = {
+        ...(editingSubscription ? { id: editingSubscription.id } : {}),
+        ...formData,
       }
 
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      toast.success(editingSubscription ? 'Subscription updated successfully' : 'Subscription created successfully')
       setFormOpen(false)
       setEditingSubscription(null)
       await fetchSubscriptions()
+      await fetchAllSubscriptions() // Refresh metrics
     } catch (error: any) {
       console.error('Error saving subscription:', error)
       toast.error(error.message || 'Failed to save subscription')
@@ -166,18 +204,21 @@ function SubscriptionsPageContent() {
     if (!confirm(`Are you sure you want to delete ${subscription.subscription_name}?`)) return
 
     try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', subscription.id)
+      const response = await fetch(`/api/unified/subscriptions?id=${subscription.id}`, {
+        method: 'DELETE',
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`)
+      }
+
       toast.success('Subscription deleted successfully')
       await fetchSubscriptions()
+      await fetchAllSubscriptions() // Refresh metrics
     } catch (error: any) {
       console.error('Error deleting subscription:', error)
-      toast.error('Failed to delete subscription')
+      toast.error(`Failed to delete subscription: ${error.message || 'Unknown error'}`)
     }
   }
 
@@ -221,7 +262,10 @@ function SubscriptionsPageContent() {
   }, [editingSubscription, formOpen])
 
   const columns = createSubscriptionColumns({
-    onView: () => {},
+    onView: (subscription) => {
+      setSelectedSubscription(subscription)
+      setDetailsModalOpen(true)
+    },
     onEdit: (subscription) => {
       setEditingSubscription(subscription)
       setFormOpen(true)
@@ -246,21 +290,13 @@ function SubscriptionsPageContent() {
   return (
     <>
       <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
+        <SubscriptionMetrics subscriptions={allSubscriptions} loading={initialLoading} />
+        
         <div className="flex items-center justify-between mb-4 flex-shrink-0">
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Subscriptions</h1>
             <p className="text-xs text-muted-foreground mt-0.5">Manage your software subscriptions</p>
           </div>
-          <button
-            onClick={() => {
-              setEditingSubscription(null)
-              setFormOpen(true)
-            }}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Subscription
-          </button>
         </div>
 
         {initialLoading ? (
@@ -321,21 +357,29 @@ function SubscriptionsPageContent() {
                 <div className="grid gap-2">
                   <Label htmlFor="vendor_id">Vendor</Label>
                   <Select
-                    value={formData.vendor_id || ''}
+                    value={formData.vendor_id || 'none'}
                     onValueChange={(value) => {
-                      const vendor = vendors.find((v) => v.id === value)
-                      setFormData({
-                        ...formData,
-                        vendor_id: value || undefined,
-                        vendor_name: vendor?.name || undefined,
-                      })
+                      if (value === 'none') {
+                        setFormData({
+                          ...formData,
+                          vendor_id: undefined,
+                          vendor_name: undefined,
+                        })
+                      } else {
+                        const vendor = vendors.find((v) => v.id === value)
+                        setFormData({
+                          ...formData,
+                          vendor_id: value,
+                          vendor_name: vendor?.name || undefined,
+                        })
+                      }
                     }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select vendor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {vendors.map((vendor) => (
                         <SelectItem key={vendor.id} value={vendor.id}>
                           {vendor.name}
@@ -448,6 +492,24 @@ function SubscriptionsPageContent() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <SubscriptionDetailsModal
+        subscription={selectedSubscription}
+        open={detailsModalOpen}
+        onOpenChange={(open) => {
+          setDetailsModalOpen(open)
+          if (!open) {
+            setSelectedSubscription(null)
+          }
+        }}
+        onEdit={(subscription) => {
+          setSelectedSubscription(null)
+          setDetailsModalOpen(false)
+          setEditingSubscription(subscription)
+          setFormOpen(true)
+        }}
+        onDelete={handleDelete}
+      />
     </>
   )
 }

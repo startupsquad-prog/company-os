@@ -138,22 +138,30 @@ export function TaskDetailsModal({
 
     try {
       const supabase = createClient()
-      const { data, error } = await supabase
+      // Use schema-aware query - task_comments is in common_util schema
+      const { data: commentsData, error } = await (supabase as any)
+        .schema('common_util')
         .from('task_comments')
-        .select(
-          `
-          *,
-          author:profiles(
-            id,
-            first_name,
-            last_name,
-            email,
-            avatar_url
-          )
-        `
-        )
+        .select('*')
         .eq('task_id', task.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
+      
+      // Fetch authors separately
+      const authorIds = [...new Set((commentsData || []).map((c: any) => c.author_id).filter(Boolean))]
+      const { data: authors } = authorIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('profiles')
+            .select('id, first_name, last_name, email, avatar_url')
+            .in('id', authorIds)
+        : { data: [] }
+      
+      const authorsMap = new Map((authors || []).map((a: any) => [a.id, a]))
+      const data = (commentsData || []).map((c: any) => ({
+        ...c,
+        author: c.author_id ? authorsMap.get(c.author_id) || null : null,
+      }))
 
       if (error) {
         console.error('Error fetching comments:', error)
@@ -193,7 +201,9 @@ export function TaskDetailsModal({
       let eventsError: any = null
 
       try {
-        const result = await supabase
+        // Use schema-aware query - activity_events is in core schema
+        const result = await (supabase as any)
+          .schema('core')
           .from('activity_events')
           .select('*')
           .eq('entity_type', 'task')
@@ -239,7 +249,8 @@ export function TaskDetailsModal({
 
       let profilesMap: Record<string, any> = {}
       if (userIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
+        const { data: profiles, error: profilesError } = await (supabase as any)
+          .schema('core')
           .from('profiles')
           .select('id, first_name, last_name, email, avatar_url, user_id')
           .in('user_id', userIds)
@@ -289,10 +300,12 @@ export function TaskDetailsModal({
     if (!task) return
     try {
       const supabase = createClient()
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
+        .schema('common_util')
         .from('task_subtasks')
         .select('*')
         .eq('task_id', task.id)
+        .is('deleted_at', null)
         .order('position', { ascending: true })
 
       if (error) {
@@ -339,10 +352,12 @@ export function TaskDetailsModal({
     if (!task) return
     try {
       const supabase = createClient()
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
+        .schema('common_util')
         .from('task_attachments')
         .select('*')
         .eq('task_id', task.id)
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -389,10 +404,12 @@ export function TaskDetailsModal({
     if (!task) return
     try {
       const supabase = createClient()
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
+        .schema('common_util')
         .from('task_deliverables')
         .select('*')
         .eq('task_id', task.id)
+        .is('deleted_at', null)
         .order('position', { ascending: true })
 
       if (error) {
@@ -520,7 +537,7 @@ export function TaskDetailsModal({
 
       if (!profile) throw new Error('Profile not found')
 
-      const { error } = await supabase.from('task_comments').insert({
+      const { error } = await (supabase as any).schema('common_util').from('task_comments').insert({
         task_id: task.id,
         author_id: (profile as any).id,
         body: commentText.trim(),
@@ -554,19 +571,23 @@ export function TaskDetailsModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
         .single()
 
-      if (!profile) throw new Error('Profile not found')
+      const profileTyped = profile as any
 
-      const { error } = await supabase
+      if (!profileTyped) throw new Error('Profile not found')
+
+      const { error } = await (supabase as any)
+        .schema('common_util')
         .from('tasks')
         .update({
           is_starred: newStarredState,
-          updated_by: profile.id,
+          updated_by: profileTyped.id,
         })
         .eq('id', task.id)
 
@@ -600,19 +621,22 @@ export function TaskDetailsModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
         .single()
 
-      if (!profile) throw new Error('Profile not found')
+      const profileTyped = profile as any
 
-      const { error } = await supabase
+      if (!profileTyped) throw new Error('Profile not found')
+
+      const { error } = await (supabase as any)
         .from('tasks')
         .update({
           title: editedTitle.trim(),
-          updated_by: profile.id,
+          updated_by: profileTyped.id,
         })
         .eq('id', task.id)
 
@@ -647,19 +671,22 @@ export function TaskDetailsModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
         .single()
 
-      if (!profile) throw new Error('Profile not found')
+      const profileTyped = profile as any
 
-      const { error } = await supabase
+      if (!profileTyped) throw new Error('Profile not found')
+
+      const { error } = await (supabase as any)
         .from('tasks')
         .update({
           description: editedDescription,
-          updated_by: profile.id,
+          updated_by: profileTyped.id,
         })
         .eq('id', task.id)
 
@@ -689,22 +716,25 @@ export function TaskDetailsModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
         .single()
 
-      if (!profile) throw new Error('Profile not found')
+      const profileTyped = profile as any
+
+      if (!profileTyped) throw new Error('Profile not found')
 
       const maxPosition = subtasks.length > 0 ? Math.max(...subtasks.map((s) => s.position)) : -1
 
-      const { error } = await supabase.from('task_subtasks').insert({
+      const { error } = await (supabase as any).schema('common_util').from('task_subtasks').insert({
         task_id: task.id,
         title: newSubtaskTitle.trim(),
         is_completed: false,
         position: maxPosition + 1,
-        created_by: profile.id,
+        created_by: profileTyped.id,
       })
 
       if (error) throw error
@@ -721,7 +751,7 @@ export function TaskDetailsModal({
   const handleToggleSubtask = async (subtaskId: string, currentState: boolean) => {
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('task_subtasks')
         .update({ is_completed: !currentState })
         .eq('id', subtaskId)
@@ -737,7 +767,7 @@ export function TaskDetailsModal({
   const handleDeleteSubtask = async (subtaskId: string) => {
     try {
       const supabase = createClient()
-      const { error } = await supabase.from('task_subtasks').delete().eq('id', subtaskId)
+      const { error } = await (supabase as any).schema('common_util').from('task_subtasks').delete().eq('id', subtaskId)
 
       if (error) throw error
       await fetchSubtasks()
@@ -760,23 +790,26 @@ export function TaskDetailsModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
         .single()
 
-      if (!profile) throw new Error('Profile not found')
+      const profileTyped = profile as any
+
+      if (!profileTyped) throw new Error('Profile not found')
 
       const maxPosition =
         deliverables.length > 0 ? Math.max(...deliverables.map((d) => d.position)) : -1
 
-      const { error } = await supabase.from('task_deliverables').insert({
+      const { error } = await (supabase as any).schema('common_util').from('task_deliverables').insert({
         task_id: task.id,
         title: newDeliverableTitle.trim(),
         is_completed: false,
         position: maxPosition + 1,
-        created_by: profile.id,
+        created_by: profileTyped.id,
       })
 
       if (error) throw error
@@ -793,7 +826,8 @@ export function TaskDetailsModal({
   const handleToggleDeliverable = async (deliverableId: string, currentState: boolean) => {
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
+        .schema('common_util')
         .from('task_deliverables')
         .update({ is_completed: !currentState })
         .eq('id', deliverableId)
@@ -809,7 +843,7 @@ export function TaskDetailsModal({
   const handleDeleteDeliverable = async (deliverableId: string) => {
     try {
       const supabase = createClient()
-      const { error } = await supabase.from('task_deliverables').delete().eq('id', deliverableId)
+      const { error } = await (supabase as any).schema('common_util').from('task_deliverables').delete().eq('id', deliverableId)
 
       if (error) throw error
       await fetchDeliverables()
@@ -835,13 +869,16 @@ export function TaskDetailsModal({
       } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
-      const { data: profile } = await supabase
+      const { data: profile } = await (supabase as any)
+        .schema('core')
         .from('profiles')
         .select('id')
         .eq('user_id', user.id)
         .single()
 
-      if (!profile) throw new Error('Profile not found')
+      const profileTyped = profile as any
+
+      if (!profileTyped) throw new Error('Profile not found')
 
       // Upload to Supabase Storage
       // Path format: {task_id}/{timestamp}.{ext}
@@ -869,13 +906,13 @@ export function TaskDetailsModal({
       // Store the full path including bucket for reference
       const fullPath = `task-attachments/${filePath}`
 
-      const { error: insertError } = await supabase.from('task_attachments').insert({
+      const { error: insertError } = await (supabase as any).schema('common_util').from('task_attachments').insert({
         task_id: task.id,
         file_name: file.name,
         file_path: fullPath,
         file_size: file.size,
         mime_type: file.type,
-        uploaded_by: profile.id,
+        uploaded_by: profileTyped.id,
       })
 
       if (insertError) throw insertError
@@ -953,7 +990,7 @@ export function TaskDetailsModal({
       if (storageError) console.warn('Error deleting from storage:', storageError)
 
       // Delete record
-      const { error } = await supabase.from('task_attachments').delete().eq('id', attachmentId)
+      const { error } = await (supabase as any).schema('common_util').from('task_attachments').delete().eq('id', attachmentId)
 
       if (error) throw error
 

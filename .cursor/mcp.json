@@ -3,6 +3,10 @@
     "trigger": {
       "command": "npx",
       "args": ["trigger.dev@latest", "mcp"]
+    },
+    "linear": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.linear.app/sse"]
     }
   }
 }

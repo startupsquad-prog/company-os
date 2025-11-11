@@ -62,9 +62,12 @@ function DocumentsPageContent() {
       setLoading(true)
       const supabase = createClient()
 
-      let query = supabase
+      // Use schema-aware query - documents is in common_util schema
+      // Note: Foreign key references across schemas may not work, so we fetch separately if needed
+      let query = (supabase as any)
+        .schema('common_util')
         .from('documents')
-        .select('*, created_by_profile:profiles!documents_created_by_fkey(id, first_name, last_name)', { count: 'exact' })
+        .select('*', { count: 'exact' })
         .is('deleted_at', null)
         .neq('status', 'deleted')
 
@@ -89,11 +92,32 @@ function DocumentsPageContent() {
       const to = from + pageSize - 1
       query = query.range(from, to)
 
-      const { data, error, count } = await query
+      const { data: documents, error, count } = await query
 
       if (error) throw error
 
-      setDocuments(data || [])
+      // Fetch related data separately
+      const createdByIds = [...new Set((documents || []).map((d: any) => d.created_by).filter(Boolean))]
+
+      // Fetch created_by profiles
+      const { data: profiles } = createdByIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('profiles')
+            .select('id, first_name, last_name')
+            .in('id', createdByIds)
+        : { data: [] }
+
+      // Create lookup map
+      const profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+      // Combine documents with relations
+      const documentsWithRelations = (documents || []).map((document: any) => ({
+        ...document,
+        created_by_profile: document.created_by ? profilesMap.get(document.created_by) || null : null,
+      }))
+
+      setDocuments(documentsWithRelations)
       setPageCount(count ? Math.ceil(count / pageSize) : 0)
     } catch (error: any) {
       console.error('Error fetching documents:', error)
@@ -116,7 +140,7 @@ function DocumentsPageContent() {
       const supabase = createClient()
 
       if (editingDocument) {
-        const { error } = await supabase
+        const { error } = await (supabase as any)
           .from('documents')
           .update({
             ...formData,
@@ -127,7 +151,7 @@ function DocumentsPageContent() {
         if (error) throw error
         toast.success('Document updated successfully')
       } else {
-        const { error } = await supabase.from('documents').insert({
+        const { error } = await (supabase as any).from('documents').insert({
           ...formData,
           created_by: clerkUser.id,
         })
@@ -151,7 +175,7 @@ function DocumentsPageContent() {
 
     try {
       const supabase = createClient()
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('documents')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', document.id)
@@ -170,7 +194,7 @@ function DocumentsPageContent() {
       window.open(document.file_url, '_blank')
       // Increment download count
       const supabase = createClient()
-      supabase
+      ;(supabase as any)
         .from('documents')
         .update({ download_count: (document.download_count || 0) + 1 })
         .eq('id', document.id)

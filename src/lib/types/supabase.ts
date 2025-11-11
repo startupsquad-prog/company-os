@@ -118,6 +118,7 @@ export type Database = {
           status: string | null
           department_id: string | null
           vertical_key: string | null
+          project_id: string | null
           due_date: string | null
           created_by: string | null
           updated_by: string | null
@@ -133,6 +134,7 @@ export type Database = {
           status?: string | null
           department_id?: string | null
           vertical_key?: string | null
+          project_id?: string | null
           due_date?: string | null
           created_by?: string | null
           updated_by?: string | null
@@ -148,6 +150,7 @@ export type Database = {
           status?: string | null
           department_id?: string | null
           vertical_key?: string | null
+          project_id?: string | null
           due_date?: string | null
           created_by?: string | null
           updated_by?: string | null
@@ -228,6 +231,105 @@ export type Database = {
           changed_at?: string
         }
       }
+      projects: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          category: string | null
+          status: string | null
+          start_date: string | null
+          due_date: string | null
+          department_id: string | null
+          vertical_key: string | null
+          created_by: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          category?: string | null
+          status?: string | null
+          start_date?: string | null
+          due_date?: string | null
+          department_id?: string | null
+          vertical_key?: string | null
+          created_by?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          category?: string | null
+          status?: string | null
+          start_date?: string | null
+          due_date?: string | null
+          department_id?: string | null
+          vertical_key?: string | null
+          created_by?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+          deleted_at?: string | null
+        }
+      }
+      project_members: {
+        Row: {
+          id: string
+          project_id: string
+          profile_id: string
+          role: 'owner' | 'collaborator' | 'watcher'
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          profile_id: string
+          role?: 'owner' | 'collaborator' | 'watcher'
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          profile_id?: string
+          role?: 'owner' | 'collaborator' | 'watcher'
+          created_at?: string
+        }
+      }
+      project_status_history: {
+        Row: {
+          id: string
+          project_id: string
+          from_status: string | null
+          to_status: string
+          changed_by: string | null
+          changed_at: string
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          from_status?: string | null
+          to_status: string
+          changed_by?: string | null
+          changed_at?: string
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          from_status?: string | null
+          to_status?: string
+          changed_by?: string | null
+          changed_at?: string
+        }
+      }
     }
   }
 }
@@ -245,6 +347,15 @@ export type TaskCommentInsert = Database['common_util']['Tables']['task_comments
 
 export type TaskStatusHistory = Database['common_util']['Tables']['task_status_history']['Row']
 
+export type Project = Database['common_util']['Tables']['projects']['Row']
+export type ProjectInsert = Database['common_util']['Tables']['projects']['Insert']
+export type ProjectUpdate = Database['common_util']['Tables']['projects']['Update']
+
+export type ProjectMember = Database['common_util']['Tables']['project_members']['Row']
+export type ProjectMemberInsert = Database['common_util']['Tables']['project_members']['Insert']
+
+export type ProjectStatusHistory = Database['common_util']['Tables']['project_status_history']['Row']
+
 export type Profile = Database['core']['Tables']['profiles']['Row']
 export type ActivityEventInsert = Database['core']['Tables']['activity_events']['Insert']
 
@@ -252,6 +363,14 @@ export type ActivityEventInsert = Database['core']['Tables']['activity_events'][
 export type TaskWithRelations = Task & {
   assignees: (TaskAssignee & { profile: Profile })[]
   latest_status: TaskStatusHistory | null
+  department: Database['core']['Tables']['departments']['Row'] | null
+  created_by_profile: Profile | null
+  updated_by_profile: Profile | null
+}
+
+export type ProjectWithRelations = Project & {
+  members: (ProjectMember & { profile: Profile })[]
+  status_history: (ProjectStatusHistory & { changed_by_profile: Profile | null })[]
   department: Database['core']['Tables']['departments']['Row'] | null
   created_by_profile: Profile | null
   updated_by_profile: Profile | null

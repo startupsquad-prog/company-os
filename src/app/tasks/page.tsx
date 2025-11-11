@@ -237,7 +237,7 @@ function TasksPageContent() {
         const supabase = createClient()
 
         // Fetch status and priority from enum_registry
-        const { data: enums, error: enumsError } = await supabase
+        const { data: enums, error: enumsError } = await (supabase as any)
           .from('enum_registry')
           .select('*')
           .in('category', ['task_status', 'task_priority'])
@@ -263,10 +263,11 @@ function TasksPageContent() {
             { label: 'Urgent', value: 'urgent' },
           ])
         } else if (enums) {
-          const status = enums
+          const enumsTyped = enums as any[]
+          const status = enumsTyped
             .filter((e) => e.category === 'task_status')
             .map((e) => ({ label: e.label, value: e.key }))
-          const priority = enums
+          const priority = enumsTyped
             .filter((e) => e.category === 'task_priority')
             .map((e) => ({ label: e.label, value: e.key }))
 
@@ -275,7 +276,7 @@ function TasksPageContent() {
         }
 
         // Fetch departments
-        const { data: departments, error: deptError } = await supabase
+        const { data: departments, error: deptError } = await (supabase as any)
           .from('departments')
           .select('id, name')
           .is('deleted_at', null)
@@ -290,7 +291,8 @@ function TasksPageContent() {
           // Set empty departments on error
           setDepartmentOptions([])
         } else if (departments) {
-          setDepartmentOptions(departments.map((d) => ({ label: d.name, value: d.id })))
+          const departmentsTyped = departments as any[]
+          setDepartmentOptions(departmentsTyped.map((d) => ({ label: d.name, value: d.id })))
         }
       } catch (error) {
         console.error('Error in fetchOptions:', error)
@@ -335,7 +337,7 @@ function TasksPageContent() {
       setTasks((prev) =>
         prev.map((task) =>
           task.id === taskId
-            ? ({ ...task, status: newStatus, position: newPosition ?? task.position } as TaskFull)
+            ? ({ ...task, status: newStatus, position: newPosition ?? (task as any).position } as TaskFull)
             : task
         )
       )
@@ -388,6 +390,7 @@ function TasksPageContent() {
             status: data.status,
             department_id: data.department_id,
             vertical_key: data.vertical_key,
+            project_id: data.project_id,
             vertical_id: verticalScope && verticalScope !== 'all' ? verticalScope : undefined,
             due_date: data.due_date?.toISOString(),
             estimated_duration: data.estimated_duration,
@@ -429,6 +432,7 @@ function TasksPageContent() {
             status: data.status || 'pending',
             department_id: data.department_id,
             vertical_key: data.vertical_key,
+            project_id: data.project_id,
             vertical_id: verticalScope && verticalScope !== 'all' ? verticalScope : undefined,
             due_date: data.due_date?.toISOString(),
             estimated_duration: data.estimated_duration,
