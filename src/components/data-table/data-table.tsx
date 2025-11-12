@@ -44,6 +44,17 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string
   addButtonText?: string
   addButtonIcon?: React.ReactNode
+  secondaryButtons?: Array<{
+    label: string
+    icon?: React.ReactNode
+    onClick: () => void
+    variant?: 'default' | 'outline' | 'ghost' | 'secondary' | 'destructive' | 'link'
+  }>
+  aiGenerateButton?: {
+    label: string
+    icon: React.ReactNode
+    onClick: () => void
+  }
   renderCustomView?: (view: string, data: TData[]) => React.ReactNode
   filterConfig?: {
     columnId: string
@@ -75,6 +86,8 @@ export function DataTable<TData, TValue>({
   searchPlaceholder,
   addButtonText,
   addButtonIcon,
+  secondaryButtons,
+  aiGenerateButton,
   renderCustomView,
   filterConfig = [],
   page: controlledPage,
@@ -213,6 +226,8 @@ export function DataTable<TData, TValue>({
           searchPlaceholder={searchPlaceholder}
           addButtonText={addButtonText}
           addButtonIcon={addButtonIcon}
+          secondaryButtons={secondaryButtons}
+          aiGenerateButton={aiGenerateButton}
           filterConfig={filterConfig}
         />
       </div>

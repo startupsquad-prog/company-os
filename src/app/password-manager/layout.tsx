@@ -4,3 +4,5 @@ export default function PasswordManagerLayout({ children }: { children: React.Re
   return <AuthenticatedLayout>{children}</AuthenticatedLayout>
 }
 
+
+

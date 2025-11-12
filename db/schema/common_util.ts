@@ -213,6 +213,27 @@ export const ticketsInCommonUtil = commonUtil.table("tickets", {
 	check("tickets_status_check", sql`status = ANY (ARRAY['new'::text, 'open'::text, 'in_progress'::text, 'waiting'::text, 'resolved'::text, 'closed'::text, 'cancelled'::text])`),
 ]);
 
+export const ticketSolutionsInCommonUtil = commonUtil.table("ticket_solutions", {
+	id: uuid().defaultRandom().primaryKey().notNull(),
+	ticketId: uuid("ticket_id").notNull(),
+	title: text().notNull(),
+	description: text(),
+	checklistItems: jsonb("checklist_items").default([]),
+	isActive: boolean("is_active").default(true),
+	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+	createdBy: text("created_by"),
+	deletedAt: timestamp("deleted_at", { withTimezone: true, mode: 'string' }),
+}, (table) => [
+	index("idx_ticket_solutions_ticket").using("btree", table.ticketId.asc().nullsLast().op("uuid_ops")),
+	index("idx_ticket_solutions_created_by").using("btree", table.createdBy.asc().nullsLast().op("text_ops")),
+	foreignKey({
+		columns: [table.ticketId],
+		foreignColumns: [ticketsInCommonUtil.id],
+		name: "ticket_solutions_ticket_id_fkey"
+	}).onDelete("cascade"),
+]);
+
 export const passwordVaultCardsInCommonUtil = commonUtil.table("password_vault_cards", {
 	id: uuid().defaultRandom().primaryKey().notNull(),
 	title: text().notNull(),

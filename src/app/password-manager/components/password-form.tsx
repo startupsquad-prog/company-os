@@ -186,14 +186,14 @@ export function PasswordForm({ password, open, onOpenChange, onSubmit }: Passwor
               <div className="grid gap-2">
                 <Label htmlFor="category">Category</Label>
                 <Select
-                  value={formData.category || ''}
-                  onValueChange={(value) => setFormData({ ...formData, category: value || undefined })}
+                  value={formData.category || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, category: value === '__none__' ? undefined : value || undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {categories.map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
@@ -205,14 +205,14 @@ export function PasswordForm({ password, open, onOpenChange, onSubmit }: Passwor
               <div className="grid gap-2">
                 <Label htmlFor="company_id">Company</Label>
                 <Select
-                  value={formData.company_id || ''}
-                  onValueChange={(value) => setFormData({ ...formData, company_id: value || undefined })}
+                  value={formData.company_id || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, company_id: value === '__none__' ? undefined : value || undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select company" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {companies.map((company) => (
                       <SelectItem key={company.id} value={company.id}>
                         {company.name}
@@ -254,4 +254,5 @@ export function PasswordForm({ password, open, onOpenChange, onSubmit }: Passwor
     </Dialog>
   )
 }
+
 

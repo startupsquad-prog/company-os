@@ -309,14 +309,14 @@ function KnowledgeArticlesPageContent() {
               <div className="grid gap-2">
                 <Label htmlFor="category_id">Category</Label>
                 <Select
-                  value={formData.category_id || ''}
-                  onValueChange={(value) => setFormData({ ...formData, category_id: value || undefined })}
+                  value={formData.category_id || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, category_id: value === '__none__' ? undefined : value || undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}

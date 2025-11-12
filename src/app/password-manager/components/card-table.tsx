@@ -13,3 +13,5 @@ export function CardTable({ cards, onEdit, onDelete }: CardTableProps) {
   return <CardGridView cards={cards} onEdit={onEdit} onDelete={onDelete} />
 }
 
+
+

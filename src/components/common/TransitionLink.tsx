@@ -1,22 +1,17 @@
 /**
- * TransitionLink - A Link component that uses view-transitions for smooth page transitions
+ * TransitionLink - A Link component wrapper for consistent navigation
  *
- * Use this component for navigation links where you want smooth page transitions.
- * For regular links that don't need transitions, use Next.js Link directly.
+ * Use this component for navigation links in the application.
+ * This is a simple wrapper around Next.js Link for consistency.
  *
- * This component wraps next-view-transitions Link and maintains the same API as Next.js Link.
+ * Note: Page transitions have been removed in favor of clean loading states.
+ * Use Suspense boundaries with PageLoader or Skeleton components for loading states.
  */
 'use client'
 
 import NextLink from 'next/link'
-import { Link as NextViewTransitionsLink } from 'next-view-transitions'
 import type { LinkProps as NextLinkProps } from 'next/link'
 import { forwardRef } from 'react'
-import {
-  setClickPosition,
-  createPageTransitionAnimation,
-  applyPageTransitionStyles,
-} from '@/lib/page-transition'
 
 export interface TransitionLinkProps extends Omit<NextLinkProps, 'href'> {
   href: string
@@ -25,7 +20,7 @@ export interface TransitionLinkProps extends Omit<NextLinkProps, 'href'> {
 }
 
 /**
- * TransitionLink - Provides smooth page transitions using the View Transition API
+ * TransitionLink - Simple wrapper around Next.js Link
  *
  * Usage:
  * ```tsx
@@ -35,38 +30,24 @@ export interface TransitionLinkProps extends Omit<NextLinkProps, 'href'> {
  * This should be used for:
  * - Main navigation links (sidebar, navbar)
  * - Primary page-to-page navigation
- * - Links where smooth transitions enhance UX
+ * - Consistent link styling throughout the app
  *
  * Don't use for:
- * - External links
+ * - External links (use regular <a> tags)
  * - Action buttons that trigger modals/forms
  * - Links that don't navigate to different pages
  */
 export const TransitionLink = forwardRef<HTMLAnchorElement, TransitionLinkProps>(
   ({ href, children, className, ...props }, ref) => {
-    const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-      // Capture click coordinates
-      const clickX = event.clientX
-      const clickY = event.clientY
-
-      // Store click position for the transition
-      setClickPosition(clickX, clickY)
-
-      // Create and apply transition animation styles
-      const animationCSS = createPageTransitionAnimation(clickX, clickY, true)
-      applyPageTransitionStyles(animationCSS)
-    }
-
     return (
-      <NextViewTransitionsLink
+      <NextLink
         ref={ref}
         href={href}
         className={className}
-        onClick={handleClick}
         {...props}
       >
         {children}
-      </NextViewTransitionsLink>
+      </NextLink>
     )
   }
 )

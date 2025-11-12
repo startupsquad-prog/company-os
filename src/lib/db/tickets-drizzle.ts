@@ -6,7 +6,7 @@
  */
 
 import { dbAdmin, postgresClientRaw } from '@/db/connections'
-import { ticketsInCommonUtil, ticketCommentsInCommonUtil, ticketStatusHistoryInCommonUtil, ticketAssignmentsInCommonUtil } from '@/db/schema/common_util'
+import { ticketsInCommonUtil, ticketCommentsInCommonUtil, ticketStatusHistoryInCommonUtil, ticketAssignmentsInCommonUtil, ticketSolutionsInCommonUtil } from '@/db/schema/common_util'
 import { profilesInCore, contactsInCore } from '@/db/schema/core'
 import { eq, and, or, isNull, inArray, desc, asc, ilike, sql, count } from 'drizzle-orm'
 import { getClerkUserId } from '@/lib/auth/clerk'
@@ -555,5 +555,95 @@ export async function getTicketStatusHistory(ticketId: string) {
     ...entry,
     created_by_profile: entry.createdBy ? profilesMap.get(entry.createdBy) || null : null,
   }))
+}
+
+/**
+ * Get solutions for a ticket
+ */
+export async function getTicketSolutions(ticketId: string) {
+  const solutions = await dbAdmin
+    .select()
+    .from(ticketSolutionsInCommonUtil)
+    .where(and(eq(ticketSolutionsInCommonUtil.ticketId, ticketId), isNull(ticketSolutionsInCommonUtil.deletedAt)))
+    .orderBy(desc(ticketSolutionsInCommonUtil.createdAt))
+
+  return solutions
+}
+
+/**
+ * Get a single solution by ID
+ */
+export async function getTicketSolution(solutionId: string) {
+  const [solution] = await dbAdmin
+    .select()
+    .from(ticketSolutionsInCommonUtil)
+    .where(and(eq(ticketSolutionsInCommonUtil.id, solutionId), isNull(ticketSolutionsInCommonUtil.deletedAt)))
+    .limit(1)
+
+  return solution || null
+}
+
+/**
+ * Create a solution for a ticket
+ */
+export async function createTicketSolution(
+  ticketId: string,
+  title: string,
+  description: string | null,
+  checklistItems: any[] = [],
+  createdBy: string | null = null
+) {
+  const [solution] = await dbAdmin
+    .insert(ticketSolutionsInCommonUtil)
+    .values({
+      ticketId,
+      title,
+      description: description || null,
+      checklistItems: checklistItems || [],
+      isActive: true,
+      createdBy,
+    })
+    .returning()
+
+  return solution
+}
+
+/**
+ * Update a solution
+ */
+export async function updateTicketSolution(
+  solutionId: string,
+  updates: {
+    title?: string
+    description?: string | null
+    checklistItems?: any[]
+    isActive?: boolean
+  }
+) {
+  const [solution] = await dbAdmin
+    .update(ticketSolutionsInCommonUtil)
+    .set({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(ticketSolutionsInCommonUtil.id, solutionId))
+    .returning()
+
+  return solution
+}
+
+/**
+ * Delete a solution (soft delete)
+ */
+export async function deleteTicketSolution(solutionId: string) {
+  const [solution] = await dbAdmin
+    .update(ticketSolutionsInCommonUtil)
+    .set({
+      deletedAt: new Date().toISOString(),
+    })
+    .where(eq(ticketSolutionsInCommonUtil.id, solutionId))
+    .returning()
+
+  return solution
 }
 

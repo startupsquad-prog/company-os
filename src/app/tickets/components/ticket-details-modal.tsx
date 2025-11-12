@@ -31,7 +31,12 @@ import {
   Download,
   Upload,
   Trash2,
+  CheckSquare,
+  X,
 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { RainbowButton } from '@/components/ui/rainbow-button'
 import { format, isPast, differenceInDays } from 'date-fns'
 import { cn } from '@/lib/utils'
 import type { TicketFull } from '@/lib/types/tickets'
@@ -46,6 +51,7 @@ interface TicketDetailsModalProps {
   onDelete?: (ticket: TicketFull) => void
   allTickets?: TicketFull[] // For navigation
   onTicketChange?: (ticket: TicketFull) => void // Callback when navigating to different ticket
+  onUpdate?: (ticket: TicketFull) => void // Callback for inline updates (doesn't open form)
 }
 
 interface TicketComment {
@@ -85,6 +91,25 @@ interface TicketAttachment {
   created_at: string
 }
 
+interface ChecklistItem {
+  id: string
+  text: string
+  is_completed: boolean
+  position: number
+}
+
+interface TicketSolution {
+  id: string
+  ticket_id: string
+  title: string
+  description: string | null
+  checklist_items: ChecklistItem[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  created_by: string | null
+}
+
 export function TicketDetailsModal({
   ticket,
   open,
@@ -93,6 +118,7 @@ export function TicketDetailsModal({
   onDelete,
   allTickets = [],
   onTicketChange,
+  onUpdate,
 }: TicketDetailsModalProps) {
   const [comments, setComments] = useState<TicketComment[]>([])
   const [activities, setActivities] = useState<ActivityEvent[]>([])
@@ -107,6 +133,13 @@ export function TicketDetailsModal({
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [editedDescription, setEditedDescription] = useState(ticket?.description || '')
   const [uploadingFile, setUploadingFile] = useState(false)
+  const [solutions, setSolutions] = useState<TicketSolution[]>([])
+  const [selectedSolution, setSelectedSolution] = useState<TicketSolution | null>(null)
+  const [newSolutionTitle, setNewSolutionTitle] = useState('')
+  const [newSolutionDescription, setNewSolutionDescription] = useState('')
+  const [newChecklistItemText, setNewChecklistItemText] = useState('')
+  const [isCreatingSolution, setIsCreatingSolution] = useState(false)
+  const [isGeneratingSolutions, setIsGeneratingSolutions] = useState(false)
 
   const fetchComments = useCallback(async () => {
     if (!ticket) return
@@ -167,6 +200,41 @@ export function TicketDetailsModal({
     }
   }, [ticket])
 
+  const fetchSolutions = useCallback(async () => {
+    if (!ticket) return
+
+    try {
+      const response = await fetch(`/api/unified/tickets/${ticket.id}/solutions`)
+      if (!response.ok) {
+        if (response.status === 404) {
+          setSolutions([])
+          return
+        }
+        throw new Error('Failed to fetch solutions')
+      }
+      const result = await response.json()
+      const solutionsData = result.data || []
+      setSolutions(solutionsData)
+      // Set the first active solution as selected, or the first one if none are active
+      // If we already have a selected solution, try to keep it selected
+      if (solutionsData.length > 0) {
+        if (selectedSolution) {
+          const updatedSolution = solutionsData.find((s: TicketSolution) => s.id === selectedSolution.id)
+          setSelectedSolution(updatedSolution || solutionsData[0])
+        } else {
+          const activeSolution = solutionsData.find((s: TicketSolution) => s.is_active) || solutionsData[0]
+          setSelectedSolution(activeSolution)
+        }
+      } else {
+        setSelectedSolution(null)
+      }
+    } catch (error) {
+      console.error('Error fetching solutions:', error)
+      setSolutions([])
+      setSelectedSolution(null)
+    }
+  }, [ticket])
+
   const getCurrentTicketIndex = () => {
     if (!ticket || allTickets.length === 0) return -1
     return allTickets.findIndex((t) => t.id === ticket.id)
@@ -215,11 +283,12 @@ export function TicketDetailsModal({
       fetchComments()
       fetchActivities()
       fetchAttachments()
+      fetchSolutions()
       setIsStarred((ticket as any)?.is_starred || false)
       setEditedTitle(ticket.title || '')
       setEditedDescription(ticket.description || '')
     }
-  }, [open, ticket, fetchComments, fetchActivities, fetchAttachments])
+  }, [open, ticket, fetchComments, fetchActivities, fetchAttachments, fetchSolutions])
 
   const handleSubmitComment = async () => {
     if (!ticket || !commentText.trim()) return
@@ -261,8 +330,11 @@ export function TicketDetailsModal({
       // This feature may need to be implemented differently or removed
       toast.success(newStarredState ? 'Ticket starred' : 'Ticket unstarred')
       // Update ticket in parent if callback exists
-      if (onEdit) {
-        onEdit({ ...ticket, is_starred: newStarredState } as TicketFull)
+      const updatedTicket = { ...ticket, is_starred: newStarredState } as TicketFull
+      if (onUpdate) {
+        onUpdate(updatedTicket)
+      } else if (onEdit) {
+        onEdit(updatedTicket)
       }
     } catch (error) {
       console.error('Error toggling star:', error)
@@ -295,8 +367,12 @@ export function TicketDetailsModal({
 
       toast.success('Title updated')
       setIsEditingTitle(false)
-      if (onEdit) {
-        onEdit({ ...ticket, title: editedTitle.trim() } as TicketFull)
+      const updatedTicket = { ...ticket, title: editedTitle.trim() } as TicketFull
+      // Use onUpdate for inline edits (doesn't open form), fallback to onEdit if onUpdate not provided
+      if (onUpdate) {
+        onUpdate(updatedTicket)
+      } else if (onEdit) {
+        onEdit(updatedTicket)
       }
     } catch (error) {
       console.error('Error updating title:', error)
@@ -330,8 +406,12 @@ export function TicketDetailsModal({
 
       toast.success('Description updated')
       setIsEditingDescription(false)
-      if (onEdit) {
-        onEdit({ ...ticket, description: editedDescription } as TicketFull)
+      const updatedTicket = { ...ticket, description: editedDescription } as TicketFull
+      // Use onUpdate for inline edits (doesn't open form), fallback to onEdit if onUpdate not provided
+      if (onUpdate) {
+        onUpdate(updatedTicket)
+      } else if (onEdit) {
+        onEdit(updatedTicket)
       }
     } catch (error) {
       console.error('Error updating description:', error)
@@ -482,6 +562,185 @@ export function TicketDetailsModal({
     } catch (error) {
       console.error('Error deleting attachment:', error)
       toast.error('Failed to delete attachment')
+    }
+  }
+
+  // Solution handlers
+  const handleCreateSolution = async () => {
+    if (!ticket || !newSolutionTitle.trim()) return
+
+    setIsCreatingSolution(true)
+    try {
+      const response = await fetch(`/api/unified/tickets/${ticket.id}/solutions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newSolutionTitle.trim(),
+          description: newSolutionDescription.trim() || null,
+          checklist_items: [],
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create solution')
+      }
+
+      setNewSolutionTitle('')
+      setNewSolutionDescription('')
+      await fetchSolutions()
+      toast.success('Solution created')
+    } catch (error) {
+      console.error('Error creating solution:', error)
+      toast.error('Failed to create solution')
+    } finally {
+      setIsCreatingSolution(false)
+    }
+  }
+
+  const handleAddChecklistItem = async () => {
+    if (!selectedSolution || !newChecklistItemText.trim()) return
+
+    try {
+      const currentItems = selectedSolution.checklist_items || []
+      const maxPosition = currentItems.length > 0 ? Math.max(...currentItems.map((item) => item.position || 0)) : -1
+      const newItem: ChecklistItem = {
+        id: crypto.randomUUID(),
+        text: newChecklistItemText.trim(),
+        is_completed: false,
+        position: maxPosition + 1,
+      }
+
+      const updatedItems = [...currentItems, newItem]
+
+      const response = await fetch(`/api/unified/tickets/solutions/${selectedSolution.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          checklist_items: updatedItems,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to add checklist item')
+      }
+
+      setNewChecklistItemText('')
+      await fetchSolutions()
+      toast.success('Checklist item added')
+    } catch (error) {
+      console.error('Error adding checklist item:', error)
+      toast.error('Failed to add checklist item')
+    }
+  }
+
+  const handleToggleChecklistItem = async (itemId: string) => {
+    if (!selectedSolution) return
+
+    try {
+      const currentItems = selectedSolution.checklist_items || []
+      const updatedItems = currentItems.map((item) =>
+        item.id === itemId ? { ...item, is_completed: !item.is_completed } : item
+      )
+
+      const response = await fetch(`/api/unified/tickets/solutions/${selectedSolution.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          checklist_items: updatedItems,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to update checklist item')
+      }
+
+      await fetchSolutions()
+    } catch (error) {
+      console.error('Error toggling checklist item:', error)
+      toast.error('Failed to update checklist item')
+    }
+  }
+
+  const handleDeleteChecklistItem = async (itemId: string) => {
+    if (!selectedSolution) return
+
+    try {
+      const currentItems = selectedSolution.checklist_items || []
+      const updatedItems = currentItems.filter((item) => item.id !== itemId)
+
+      const response = await fetch(`/api/unified/tickets/solutions/${selectedSolution.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          checklist_items: updatedItems,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to delete checklist item')
+      }
+
+      await fetchSolutions()
+      toast.success('Checklist item deleted')
+    } catch (error) {
+      console.error('Error deleting checklist item:', error)
+      toast.error('Failed to delete checklist item')
+    }
+  }
+
+  const handleDeleteSolution = async (solutionId: string) => {
+    if (!confirm('Are you sure you want to delete this solution?')) return
+
+    try {
+      const response = await fetch(`/api/unified/tickets/solutions/${solutionId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to delete solution')
+      }
+
+      await fetchSolutions()
+      toast.success('Solution deleted')
+    } catch (error) {
+      console.error('Error deleting solution:', error)
+      toast.error('Failed to delete solution')
+    }
+  }
+
+  const handleGenerateSolutions = async () => {
+    if (!ticket) return
+
+    // Check if solutions already exist
+    if (solutions.length > 0) {
+      toast.error('Solutions already exist for this ticket. Please delete existing solutions before generating new ones.')
+      return
+    }
+
+    setIsGeneratingSolutions(true)
+    try {
+      const response = await fetch(`/api/unified/tickets/${ticket.id}/generate-solutions`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to generate solutions')
+      }
+
+      const result = await response.json()
+      await fetchSolutions()
+      toast.success(result.message || `Successfully generated ${result.data?.length || 0} solution(s)`)
+    } catch (error) {
+      console.error('Error generating solutions:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to generate solutions')
+    } finally {
+      setIsGeneratingSolutions(false)
     }
   }
 
@@ -774,6 +1033,7 @@ export function TicketDetailsModal({
               <TabsList>
                 <TabsTrigger value="attachments">Attachments</TabsTrigger>
                 <TabsTrigger value="comments">Comments</TabsTrigger>
+                <TabsTrigger value="solution">Solution</TabsTrigger>
               </TabsList>
               <TabsContent value="attachments" className="mt-4">
                 <div className="rounded-md border p-4 min-h-[200px] space-y-3">
@@ -874,7 +1134,188 @@ export function TicketDetailsModal({
                   </div>
                 </div>
               </TabsContent>
+              <TabsContent value="solution" className="mt-4">
+                <div className="rounded-md border p-4 min-h-[200px] space-y-4">
+                  {solutions.length === 0 ? (
+                    <div className="space-y-4">
+                      <div className="text-center py-8">
+                        <CheckSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                        <p className="text-sm text-muted-foreground mb-4">No solution yet</p>
+                      </div>
+                      {/* Create new solution form */}
+                      <div className="space-y-3 p-4 border rounded-lg bg-muted/50">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Solution Title *</label>
+                          <Input
+                            placeholder="Enter solution title..."
+                            value={newSolutionTitle}
+                            onChange={(e) => setNewSolutionTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                handleCreateSolution()
+                              }
+                            }}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Description (optional)</label>
+                          <Textarea
+                            placeholder="Enter solution description..."
+                            value={newSolutionDescription}
+                            onChange={(e) => setNewSolutionDescription(e.target.value)}
+                            rows={2}
+                            className="resize-none"
+                          />
+                        </div>
+                        <Button
+                          onClick={handleCreateSolution}
+                          disabled={!newSolutionTitle.trim() || isCreatingSolution}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          {isCreatingSolution ? 'Creating...' : 'Create Solution'}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* Solution selector */}
+                      {solutions.length > 1 && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Select Solution</label>
+                          <select
+                            value={selectedSolution?.id || ''}
+                            onChange={(e) => {
+                              const solution = solutions.find((s) => s.id === e.target.value)
+                              setSelectedSolution(solution || null)
+                            }}
+                            className="w-full px-3 py-2 text-sm border rounded-md bg-background"
+                          >
+                            {solutions.map((solution) => (
+                              <option key={solution.id} value={solution.id}>
+                                {solution.title} {solution.is_active ? '(Active)' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {selectedSolution && (
+                        <div className="space-y-4">
+                          {/* Solution header */}
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="text-sm font-semibold mb-1">{selectedSolution.title}</h3>
+                              {selectedSolution.description && (
+                                <p className="text-sm text-muted-foreground">{selectedSolution.description}</p>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleDeleteSolution(selectedSolution.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          <Separator />
+
+                          {/* Checklist */}
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <CheckSquare className="h-4 w-4 text-muted-foreground" />
+                              <h4 className="text-sm font-medium">Checklist</h4>
+                            </div>
+
+                            {/* Checklist items */}
+                            <div className="space-y-2">
+                              {selectedSolution.checklist_items && selectedSolution.checklist_items.length > 0 ? (
+                                selectedSolution.checklist_items
+                                  .sort((a, b) => (a.position || 0) - (b.position || 0))
+                                  .map((item) => (
+                                    <div
+                                      key={item.id}
+                                      className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                                    >
+                                      <Checkbox
+                                        checked={item.is_completed}
+                                        onCheckedChange={() => handleToggleChecklistItem(item.id)}
+                                      />
+                                      <span
+                                        className={cn(
+                                          'flex-1 text-sm',
+                                          item.is_completed && 'line-through text-muted-foreground'
+                                        )}
+                                      >
+                                        {item.text}
+                                      </span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => handleDeleteChecklistItem(item.id)}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))
+                              ) : (
+                                <p className="text-sm text-muted-foreground text-center py-2">
+                                  No checklist items yet
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Add checklist item */}
+                            <div className="flex items-center gap-2 pt-2 border-t">
+                              <Input
+                                placeholder="Add a checklist item..."
+                                value={newChecklistItemText}
+                                onChange={(e) => setNewChecklistItemText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault()
+                                    handleAddChecklistItem()
+                                  }
+                                }}
+                                className="flex-1"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={handleAddChecklistItem}
+                                disabled={!newChecklistItemText.trim()}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
             </Tabs>
+
+            {/* AI Generate Solutions Button */}
+            <div className="mt-4 flex justify-center">
+              <RainbowButton
+                onClick={handleGenerateSolutions}
+                disabled={isGeneratingSolutions || solutions.length > 0}
+                className="w-full sm:w-auto"
+              >
+                {isGeneratingSolutions ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    Generating...
+                  </span>
+                ) : (
+                  'Generate using AI'
+                )}
+              </RainbowButton>
+            </div>
           </div>
 
           {/* Right Panel - 1/3 width - Updates & Comments */}

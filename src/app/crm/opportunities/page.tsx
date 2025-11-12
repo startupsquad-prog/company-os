@@ -372,14 +372,14 @@ function OpportunitiesPageContent() {
               <div className="grid gap-2">
                 <Label htmlFor="pipeline_id">Pipeline</Label>
                 <Select
-                  value={formData.pipeline_id}
-                  onValueChange={(value) => setFormData({ ...formData, pipeline_id: value, stage_id: '' })}
+                  value={formData.pipeline_id || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, pipeline_id: value === '__none__' ? undefined : value, stage_id: '__none__' })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select pipeline" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {pipelines.map((pipeline) => (
                       <SelectItem key={pipeline.id} value={pipeline.id}>
                         {pipeline.name}
@@ -391,15 +391,15 @@ function OpportunitiesPageContent() {
               <div className="grid gap-2">
                 <Label htmlFor="stage_id">Stage</Label>
                 <Select
-                  value={formData.stage_id}
-                  onValueChange={(value) => setFormData({ ...formData, stage_id: value })}
+                  value={formData.stage_id || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, stage_id: value === '__none__' ? undefined : value })}
                   disabled={!formData.pipeline_id}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={formData.pipeline_id ? 'Select stage' : 'Select pipeline first'} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {filteredStages.map((stage) => (
                       <SelectItem key={stage.id} value={stage.id}>
                         {stage.name}

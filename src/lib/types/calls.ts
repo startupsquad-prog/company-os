@@ -32,17 +32,41 @@ export interface CallFull extends Call {
     id: string
     name: string
     phone: string | null
+    email: string | null
   } | null
   lead?: {
     id: string
     contact?: {
       name: string
+      phone: string | null
+      email: string | null
     } | null
   } | null
   caller?: {
     id: string
     first_name: string | null
     last_name: string | null
+    email: string | null
+    phone: string | null
+    avatar_url: string | null
+  } | null
+  meta?: {
+    transcription?: {
+      raw?: string
+      conversational?: string
+    }
+    ai_feedback?: {
+      sentiment?: string
+      key_points?: string[]
+      action_items?: string[]
+      satisfaction_rating?: number
+      professionalism_rating?: number
+      responsiveness_rating?: number
+      overall_rating?: number
+      call_quality?: string
+      customer_interest?: string
+      next_steps?: string
+    }
   } | null
 }
 

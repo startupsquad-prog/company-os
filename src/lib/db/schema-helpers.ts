@@ -140,6 +140,13 @@ export const TABLES = {
     applications: 'applications',
     candidates: 'candidates',
     interviews: 'interviews',
+    evaluations: 'evaluations',
+    calls: 'calls',
+    interview_status_history: 'interview_status_history',
+    application_status_history: 'application_status_history',
+    job_portals: 'job_portals',
+    job_roles: 'job_roles',
+    job_listings: 'job_listings',
   },
   [SCHEMAS.HR]: {
     attendance_sessions: 'attendance_sessions',

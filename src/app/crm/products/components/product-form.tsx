@@ -228,14 +228,14 @@ export function ProductForm({ product, open, onOpenChange, onSubmit }: ProductFo
               <div className="grid gap-2">
                 <Label htmlFor="supplier_id">Supplier</Label>
                 <Select
-                  value={formData.supplier_id || ''}
-                  onValueChange={(value) => setFormData({ ...formData, supplier_id: value || undefined })}
+                  value={formData.supplier_id || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, supplier_id: value === '__none__' ? undefined : value || undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select supplier" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {suppliers.map((supplier) => (
                       <SelectItem key={supplier.id} value={supplier.id}>
                         {supplier.name}
@@ -247,14 +247,14 @@ export function ProductForm({ product, open, onOpenChange, onSubmit }: ProductFo
               <div className="grid gap-2">
                 <Label htmlFor="manufacturer_id">Manufacturer</Label>
                 <Select
-                  value={formData.manufacturer_id || ''}
-                  onValueChange={(value) => setFormData({ ...formData, manufacturer_id: value || undefined })}
+                  value={formData.manufacturer_id || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, manufacturer_id: value === '__none__' ? undefined : value || undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select manufacturer" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {manufacturers.map((manufacturer) => (
                       <SelectItem key={manufacturer.id} value={manufacturer.id}>
                         {manufacturer.name}

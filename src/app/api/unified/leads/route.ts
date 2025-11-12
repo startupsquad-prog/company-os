@@ -52,7 +52,9 @@ export async function GET(request: NextRequest) {
       query = query.eq('vertical_id', filters.vertical_id)
     }
 
-    // Apply search (if needed, can search in notes or other fields)
+    // Apply search - search in notes field
+    // Note: For searching across multiple fields or in related tables (contacts, companies),
+    // we'd need to fetch more data and filter in memory, or use a full-text search index
     if (search) {
       query = query.ilike('notes', `%${search}%`)
     }
@@ -70,7 +72,16 @@ export async function GET(request: NextRequest) {
     const { data: leads, error, count } = await query
 
     if (error) {
-      throw new Error(`Failed to fetch leads: ${error.message}`)
+      const errorDetails = {
+        message: error.message || 'Unknown error',
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        status: (error as any)?.status,
+        statusText: (error as any)?.statusText,
+      }
+      console.error('Error fetching leads:', errorDetails)
+      throw new Error(`Failed to fetch leads: ${errorDetails.message || 'Unknown error'}`)
     }
 
     // Fetch related data
@@ -79,33 +90,104 @@ export async function GET(request: NextRequest) {
     const ownerIds = [...new Set((leads || []).map((l: any) => l.owner_id).filter(Boolean))]
 
     // Fetch contacts
-    const { data: contacts } =
-      contactIds.length > 0
-        ? await fromCore('contacts')
-            .select('id, name, email, phone')
-            .in('id', contactIds)
-        : { data: [] }
+    let contacts: any[] = []
+    if (contactIds.length > 0) {
+      const { data: contactsData, error: contactsError } = await fromCore('contacts')
+        .select('id, name, email, phone')
+        .in('id', contactIds)
+
+      if (contactsError) {
+        const errorDetails = {
+          message: contactsError.message || 'Unknown error',
+          code: contactsError.code,
+          details: contactsError.details,
+          hint: contactsError.hint,
+        }
+        console.error('Error fetching contacts:', errorDetails)
+        // Don't throw - we can still return leads without contacts
+      } else {
+        contacts = contactsData || []
+      }
+    }
 
     // Fetch companies
-    const { data: companies } =
-      companyIds.length > 0
-        ? await fromCore('companies')
-            .select('id, name, website, industry')
-            .in('id', companyIds)
-        : { data: [] }
+    let companies: any[] = []
+    if (companyIds.length > 0) {
+      const { data: companiesData, error: companiesError } = await fromCore('companies')
+        .select('id, name, website, industry')
+        .in('id', companyIds)
 
-    // Fetch profiles (owners)
-    const { data: profiles } =
-      ownerIds.length > 0
-        ? await fromCore('profiles')
-            .select('id, first_name, last_name, email, avatar_url')
-            .in('id', ownerIds)
-        : { data: [] }
+      if (companiesError) {
+        const errorDetails = {
+          message: companiesError.message || 'Unknown error',
+          code: companiesError.code,
+          details: companiesError.details,
+          hint: companiesError.hint,
+        }
+        console.error('Error fetching companies:', errorDetails)
+        // Don't throw - we can still return leads without companies
+      } else {
+        companies = companiesData || []
+      }
+    }
+
+    // Fetch profiles (owners) - note: owner_id in leads is UUID, maps to profiles.id
+    let profiles: any[] = []
+    if (ownerIds.length > 0) {
+      const { data: profilesData, error: profilesError } = await fromCore('profiles')
+        .select('id, user_id, first_name, last_name, email, avatar_url')
+        .in('id', ownerIds)
+
+      if (profilesError) {
+        const errorDetails = {
+          message: profilesError.message || 'Unknown error',
+          code: profilesError.code,
+          details: profilesError.details,
+          hint: profilesError.hint,
+        }
+        console.error('Error fetching profiles:', errorDetails)
+        // Don't throw - we can still return leads without profiles
+      } else {
+        profiles = profilesData || []
+      }
+    }
+
+    // Fetch last call dates for leads (most recent call per lead)
+    const leadIds = (leads || []).map((l: any) => l.id)
+    let lastCallDates: Record<string, string> = {}
+    if (leadIds.length > 0) {
+      try {
+        // For each lead, get the most recent call
+        // Note: We'll fetch calls and group by lead_id client-side for simplicity
+        // In production, you might want to use a database view or window function
+        const { data: lastCalls, error: callsError } = await fromCrm('calls')
+          .select('lead_id, started_at')
+          .in('lead_id', leadIds)
+          .not('started_at', 'is', null)
+          .is('deleted_at', null)
+          .order('started_at', { ascending: false })
+
+        if (!callsError && lastCalls) {
+          // Group by lead_id and get the most recent call (first one since we ordered DESC)
+          const callsByLead = new Map<string, string>()
+          for (const call of lastCalls) {
+            if (call.lead_id && call.started_at && !callsByLead.has(call.lead_id)) {
+              callsByLead.set(call.lead_id, call.started_at)
+            }
+          }
+          lastCallDates = Object.fromEntries(callsByLead)
+        }
+      } catch (error) {
+        console.error('Error fetching last call dates:', error)
+        // Don't throw - we can still return leads without last call dates
+      }
+    }
 
     // Create lookup maps
-    const contactsMap = new Map((contacts || []).map((c: any) => [c.id, c]))
-    const companiesMap = new Map((companies || []).map((c: any) => [c.id, c]))
-    const profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+    const contactsMap = new Map(contacts.map((c: any) => [c.id, c]))
+    const companiesMap = new Map(companies.map((c: any) => [c.id, c]))
+    // Note: owner_id in leads is UUID, maps to profiles.id
+    const profilesMap = new Map(profiles.map((p: any) => [p.id, p]))
 
     // Combine leads with relations
     const leadsWithRelations = (leads || []).map((lead: any) => ({
@@ -113,6 +195,7 @@ export async function GET(request: NextRequest) {
       contact: lead.contact_id ? contactsMap.get(lead.contact_id) || null : null,
       company: lead.company_id ? companiesMap.get(lead.company_id) || null : null,
       owner: lead.owner_id ? profilesMap.get(lead.owner_id) || null : null,
+      last_call_date: lastCallDates[lead.id] || null,
     }))
 
     return NextResponse.json({
@@ -123,9 +206,14 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil((count || 0) / pageSize),
     })
   } catch (error: any) {
-    console.error('Error fetching leads:', error)
+    const errorDetails = {
+      message: error.message || 'Unknown error',
+      stack: error.stack,
+      error: JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
+    }
+    console.error('Error fetching leads:', errorDetails)
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch leads' },
+      { error: errorDetails.message || 'Failed to fetch leads' },
       { status: 500 }
     )
   }
@@ -159,14 +247,28 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      throw new Error(`Failed to create lead: ${error.message}`)
+      const errorDetails = {
+        message: error.message || 'Unknown error',
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        status: (error as any)?.status,
+        statusText: (error as any)?.statusText,
+      }
+      console.error('Error creating lead:', errorDetails)
+      throw new Error(`Failed to create lead: ${errorDetails.message || 'Unknown error'}`)
     }
 
     return NextResponse.json({ data: lead }, { status: 201 })
   } catch (error: any) {
-    console.error('Error creating lead:', error)
+    const errorDetails = {
+      message: error.message || 'Unknown error',
+      stack: error.stack,
+      error: JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
+    }
+    console.error('Error creating lead:', errorDetails)
     return NextResponse.json(
-      { error: error.message || 'Failed to create lead' },
+      { error: errorDetails.message || 'Failed to create lead' },
       { status: 500 }
     )
   }

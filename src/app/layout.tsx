@@ -5,8 +5,6 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { RoleProvider } from '@/lib/roles/role-context'
 import OnekoCat from '@/components/common/OnekoCat'
-import { ViewTransitions } from 'next-view-transitions'
-import { PageTransitionProvider } from '@/components/page-transition-provider'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 export const dynamic = 'force-dynamic'
@@ -41,27 +39,24 @@ export default function RootLayout({
   const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
   
   const content = (
-    <ViewTransitions>
-      <html lang="en" suppressHydrationWarning>
-        <body className="font-sans" suppressHydrationWarning>
-          <ErrorBoundary>
-            <ThemeProvider
-              attribute="data-theme"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <RoleProvider>
-                <PageTransitionProvider />
-                {children}
-                <Toaster />
-                <OnekoCat />
-              </RoleProvider>
-            </ThemeProvider>
-          </ErrorBoundary>
-        </body>
-      </html>
-    </ViewTransitions>
+    <html lang="en" suppressHydrationWarning>
+      <body className="font-sans" suppressHydrationWarning>
+        <ErrorBoundary>
+          <ThemeProvider
+            attribute="data-theme"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <RoleProvider>
+              {children}
+              <Toaster />
+              <OnekoCat />
+            </RoleProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
+      </body>
+    </html>
   )
   
   // Always wrap with ClerkProvider to ensure useUser() hooks work

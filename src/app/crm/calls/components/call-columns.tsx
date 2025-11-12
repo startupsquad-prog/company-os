@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal, Eye, Edit, Trash2, Phone } from 'lucide-react'
 import { format } from 'date-fns'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getDiceBearAvatar, getUserInitials } from '@/lib/utils/avatar'
 import type { CallFull, CallType, CallStatus } from '@/lib/types/calls'
 
 const callTypeConfig: Record<CallType, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
@@ -47,33 +49,67 @@ export const createCallColumns = (handlers?: {
         const call = row.original
         const contact = call.contact
         const lead = call.lead
-        return contact ? (
-          <div className="flex flex-col">
-            <Button
-              variant="link"
-              className="h-auto p-0 font-medium text-left justify-start"
-              onClick={() => onView?.(call)}
-            >
-              {contact.name}
-            </Button>
-            {contact.phone && (
-              <span className="text-xs text-muted-foreground">{contact.phone}</span>
-            )}
-          </div>
-        ) : lead?.contact ? (
-          <div className="flex flex-col">
-            <Button
-              variant="link"
-              className="h-auto p-0 font-medium text-left justify-start"
-              onClick={() => onView?.(call)}
-            >
-              {lead.contact.name}
-            </Button>
-            <span className="text-xs text-muted-foreground">Lead</span>
-          </div>
-        ) : (
-          <span className="text-muted-foreground">—</span>
-        )
+        const leadContact = lead?.contact
+        
+        if (contact) {
+          const avatarSeed = contact.name || contact.email || contact.id
+          const avatarUrl = getDiceBearAvatar(avatarSeed)
+          const initials = contact.name ? contact.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) : '?'
+          
+          return (
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={avatarUrl} alt={contact.name} />
+                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <Button
+                  variant="link"
+                  className="h-auto p-0 font-medium text-left justify-start text-sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onView?.(call)
+                  }}
+                >
+                  {contact.name}
+                </Button>
+                {contact.phone && (
+                  <span className="text-xs text-muted-foreground">{contact.phone}</span>
+                )}
+              </div>
+            </div>
+          )
+        } else if (leadContact) {
+          const avatarSeed = leadContact.name || leadContact.email || lead?.id || ''
+          const avatarUrl = getDiceBearAvatar(avatarSeed)
+          const initials = leadContact.name ? leadContact.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2) : '?'
+          
+          return (
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={avatarUrl} alt={leadContact.name} />
+                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <Button
+                  variant="link"
+                  className="h-auto p-0 font-medium text-left justify-start text-sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onView?.(call)
+                  }}
+                >
+                  {leadContact.name}
+                </Button>
+                <span className="text-xs text-muted-foreground">
+                  {leadContact.phone || 'Lead'}
+                </span>
+              </div>
+            </div>
+          )
+        } else {
+          return <span className="text-muted-foreground">—</span>
+        }
       },
     },
     {
@@ -81,12 +117,32 @@ export const createCallColumns = (handlers?: {
       header: ({ column }) => <DataTableColumnHeader column={column} title="Caller" />,
       cell: ({ row }) => {
         const caller = row.original.caller
-        return caller ? (
-          <span className="text-sm">
-            {[caller.first_name, caller.last_name].filter(Boolean).join(' ') || 'Unknown'}
-          </span>
-        ) : (
-          <span className="text-muted-foreground">—</span>
+        if (!caller) return <span className="text-muted-foreground">—</span>
+        
+        const callerName = [caller.first_name, caller.last_name].filter(Boolean).join(' ') || caller.email || 'Unknown'
+        const avatarSeed = callerName !== 'Unknown' ? callerName : caller.email || caller.id
+        const avatarUrl = caller.avatar_url || getDiceBearAvatar(avatarSeed)
+        const initials = getUserInitials(caller.first_name, caller.last_name, caller.email)
+        
+        return (
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={avatarUrl} alt={callerName} />
+              <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <Button
+                variant="link"
+                className="h-auto p-0 font-medium text-left justify-start text-sm"
+                onClick={() => onView?.(row.original)}
+              >
+                {callerName}
+              </Button>
+              {caller.phone && (
+                <span className="text-xs text-muted-foreground">{caller.phone}</span>
+              )}
+            </div>
+          </div>
         )
       },
     },

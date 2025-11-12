@@ -9,6 +9,7 @@ import { DataTableViewToggle } from './data-table-view-toggle'
 import { DataTableExportMenu } from './data-table-export-menu'
 import { DataTableDateRangePicker } from './data-table-date-range-picker'
 import { X, Plus } from 'lucide-react'
+import { RainbowButton } from '@/components/ui/rainbow-button'
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>
@@ -21,6 +22,17 @@ interface DataTableToolbarProps<TData> {
   searchPlaceholder?: string
   addButtonText?: string
   addButtonIcon?: React.ReactNode
+  secondaryButtons?: Array<{
+    label: string
+    icon?: React.ReactNode
+    onClick: () => void
+    variant?: 'default' | 'outline' | 'ghost' | 'secondary' | 'destructive' | 'link'
+  }>
+  aiGenerateButton?: {
+    label: string
+    icon: React.ReactNode
+    onClick: () => void
+  }
   filterConfig?: {
     columnId: string
     title: string
@@ -39,6 +51,8 @@ export function DataTableToolbar<TData>({
   searchPlaceholder = 'Search...',
   addButtonText = 'Add Item',
   addButtonIcon = <Plus className="mr-2 h-4 w-4" />,
+  secondaryButtons = [],
+  aiGenerateButton,
   filterConfig = [],
 }: DataTableToolbarProps<TData>) {
   const isFiltered = table.getState().columnFilters.length > 0
@@ -84,6 +98,14 @@ export function DataTableToolbar<TData>({
             <DataTableDateRangePicker onDateRangeChange={onDateRangeChange} />
           </div>
         )}
+        {aiGenerateButton && (
+          <div className="flex-shrink-0">
+            <RainbowButton onClick={aiGenerateButton.onClick}>
+              {aiGenerateButton.icon}
+              <span className="hidden sm:inline ml-2">{aiGenerateButton.label}</span>
+            </RainbowButton>
+          </div>
+        )}
         {onViewChange && (
           <div className="flex-shrink-0">
             <DataTableViewToggle view={view} onViewChange={onViewChange} />
@@ -95,6 +117,20 @@ export function DataTableToolbar<TData>({
           <DataTableExportMenu data={data} />
           </div>
         </div>
+        {secondaryButtons.map((button, index) => (
+          <Button
+            key={index}
+            type="button"
+            onClick={button.onClick}
+            variant={button.variant || 'outline'}
+            size="sm"
+            className="h-8 px-2 sm:px-3 flex-shrink-0"
+          >
+            <span className="hidden sm:inline">{button.icon}</span>
+            <span className="text-sm hidden sm:inline">{button.label}</span>
+            {button.icon && <span className="sm:hidden">{button.icon}</span>}
+          </Button>
+        ))}
         {onAdd && (
           <Button 
             type="button" 

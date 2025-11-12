@@ -16,6 +16,7 @@ import {
 import { MoreHorizontal, Eye, Edit, Trash2, ArrowUpDown } from 'lucide-react'
 import { format } from 'date-fns'
 import type { LeadFull, LeadStatus } from '@/lib/types/leads'
+import { getDiceBearAvatar, getUserInitials } from '@/lib/utils/avatar'
 
 const statusConfig: Record<
   LeadStatus,
@@ -47,20 +48,62 @@ export const createLeadColumns = (handlers?: {
     header: ({ column }) => <DataTableColumnHeader column={column} title="Contact" />,
     cell: ({ row }) => {
       const lead = row.original
-      const contactName = lead.contact?.name || 'No Contact'
-      const contactEmail = lead.contact?.email
+      const contact = lead.contact
+      const contactName = contact?.name || 'No Contact'
+      const contactEmail = contact?.email || ''
+      const avatarSeed = contactName !== 'No Contact' ? contactName : contactEmail || lead.id
+      const avatarUrl = getDiceBearAvatar(avatarSeed)
+      const initials = contactName !== 'No Contact' 
+        ? getUserInitials(contactName.split(' ')[0], contactName.split(' ').slice(1).join(' '), contactEmail)
+        : '?'
 
       return (
-        <div className="flex flex-col">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8 flex-shrink-0">
+            <AvatarImage src={avatarUrl} alt={contactName} />
+            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+          </Avatar>
           <Button
             variant="link"
             className="h-auto p-0 font-medium text-left justify-start"
-            onClick={() => onView?.(lead)}
+            onClick={(e) => {
+              e.stopPropagation()
+              onView?.(lead)
+            }}
           >
             {contactName}
           </Button>
-          {contactEmail && <span className="text-xs text-muted-foreground">{contactEmail}</span>}
         </div>
+      )
+    },
+  },
+  {
+    accessorKey: 'phone',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Phone" />,
+    cell: ({ row }) => {
+      const phone = row.original.contact?.phone
+      return phone ? (
+        <span className="text-sm">{phone}</span>
+      ) : (
+        <span className="text-muted-foreground">—</span>
+      )
+    },
+  },
+  {
+    accessorKey: 'email',
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Email" />,
+    cell: ({ row }) => {
+      const email = row.original.contact?.email
+      return email ? (
+        <a
+          href={`mailto:${email}`}
+          className="text-sm text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {email}
+        </a>
+      ) : (
+        <span className="text-muted-foreground">—</span>
       )
     },
   },

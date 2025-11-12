@@ -55,6 +55,7 @@ export interface LeadFull extends Lead {
   } | null
   interactions_count?: number
   last_interaction_at?: string | null
+  last_call_date?: string | null
 }
 
 export interface Interaction {

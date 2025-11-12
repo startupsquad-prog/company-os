@@ -1,25 +1,41 @@
 'use client'
 
+import { useState, useEffect, Suspense } from 'react'
+import { PageLoader } from '@/components/ui/loader'
+import { PageAccessHeader } from '@/components/page-access/page-access-header'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Clock } from 'lucide-react'
-import { ComingSoonBadge } from '@/components/coming-soon-badge'
 
-export default function AttendancePage() {
+function AttendancePageContent() {
   return (
     <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div>
           <h1 className="text-lg font-semibold tracking-tight">Attendance</h1>
-          <ComingSoonBadge />
+          <p className="text-xs text-muted-foreground mt-0.5">Track employee attendance</p>
         </div>
+        <PageAccessHeader pagePath="/hr/attendance" />
       </div>
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="text-center py-12 text-muted-foreground">
-          <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-          <p>Attendance management coming soon</p>
-          <p className="text-sm mt-2">Database schema and RLS policies are ready</p>
-        </div>
-      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Attendance Tracking</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Attendance tracking functionality coming soon</p>
+        </CardContent>
+      </Card>
     </div>
   )
 }
+
+export default function AttendancePage() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <AttendancePageContent />
+    </Suspense>
+  )
+}
+
 

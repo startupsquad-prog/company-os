@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import type { LeadFull, Interaction, StatusHistoryEntry } from '@/lib/types/leads'
-import { createClient } from '@/lib/supabase/client'
+import { getUnifiedClient } from '@/lib/db/unified-client'
 import { toast } from 'sonner'
 import { Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -42,50 +42,109 @@ export function LeadDetailsModal({
 
     try {
       setLoading(true)
-      const supabase = createClient()
+      const supabase = getUnifiedClient()
 
-      // Fetch interactions
-      const { data: interactionsData } = await supabase
+      // Fetch interactions from crm schema
+      const { data: interactionsData, error: interactionsError } = await (supabase as any)
+        .schema('crm')
         .from('interactions')
-        .select(
-          `
-          *,
-          created_by_profile:profiles(
-            id,
-            first_name,
-            last_name,
-            email,
-            avatar_url
-          )
-        `
-        )
+        .select('*')
         .eq('entity_type', 'lead')
         .eq('entity_id', lead.id)
         .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
-      setInteractions(interactionsData || [])
+      if (interactionsError) {
+        const errorDetails = {
+          message: interactionsError.message || 'Unknown error',
+          code: interactionsError.code,
+          details: interactionsError.details,
+          hint: interactionsError.hint,
+          status: (interactionsError as any)?.status,
+          statusText: (interactionsError as any)?.statusText,
+        }
+        console.error('Error fetching interactions:', errorDetails)
+        throw new Error(`Failed to fetch interactions: ${errorDetails.message || 'Unknown error'}`)
+      }
 
-      // Fetch status history
-      const { data: historyData } = await supabase
+      // Fetch status history from crm schema
+      const { data: historyData, error: historyError } = await (supabase as any)
+        .schema('crm')
         .from('status_history')
-        .select(
-          `
-          *,
-          created_by_profile:profiles(
-            id,
-            first_name,
-            last_name,
-            email
-          )
-        `
-        )
+        .select('*')
         .eq('lead_id', lead.id)
         .order('created_at', { ascending: false })
 
-      setStatusHistory(historyData || [])
-    } catch (error) {
-      console.error('Error fetching lead data:', error)
+      if (historyError) {
+        const errorDetails = {
+          message: historyError.message || 'Unknown error',
+          code: historyError.code,
+          details: historyError.details,
+          hint: historyError.hint,
+          status: (historyError as any)?.status,
+          statusText: (historyError as any)?.statusText,
+        }
+        console.error('Error fetching status history:', errorDetails)
+        throw new Error(`Failed to fetch status history: ${errorDetails.message || 'Unknown error'}`)
+      }
+
+      // Fetch profiles separately (created_by is Clerk user ID, maps to profiles.user_id)
+      const interactionsTyped = (interactionsData || []) as any[]
+      const historyTyped = (historyData || []) as any[]
+      const createdByIds = [
+        ...new Set([
+          ...interactionsTyped.map((i: any) => i.created_by).filter(Boolean),
+          ...historyTyped.map((h: any) => h.created_by).filter(Boolean),
+        ] as string[]),
+      ]
+
+      let profilesMap = new Map()
+      if (createdByIds.length > 0) {
+        const { data: profiles, error: profilesError } = await (supabase as any)
+          .schema('core')
+          .from('profiles')
+          .select('id, user_id, first_name, last_name, email, avatar_url')
+          .in('user_id', createdByIds)
+
+        if (profilesError) {
+          const errorDetails = {
+            message: profilesError.message || 'Unknown error',
+            code: profilesError.code,
+            details: profilesError.details,
+            hint: profilesError.hint,
+            status: (profilesError as any)?.status,
+            statusText: (profilesError as any)?.statusText,
+          }
+          console.error('Error fetching profiles:', errorDetails)
+          // Don't throw - we can still show interactions/history without profiles
+        } else {
+          profilesMap = new Map((profiles || []).map((p: any) => [p.user_id, p]))
+        }
+      }
+
+      // Combine interactions with profiles
+      const interactionsWithProfiles = interactionsTyped.map((interaction: any) => ({
+        ...interaction,
+        created_by_profile: interaction.created_by
+          ? profilesMap.get(interaction.created_by) || null
+          : null,
+      })) as Interaction[]
+
+      // Combine status history with profiles
+      const historyWithProfiles = historyTyped.map((entry: any) => ({
+        ...entry,
+        created_by_profile: entry.created_by ? profilesMap.get(entry.created_by) || null : null,
+      })) as StatusHistoryEntry[]
+
+      setInteractions(interactionsWithProfiles)
+      setStatusHistory(historyWithProfiles)
+    } catch (error: any) {
+      console.error('Error fetching lead data:', {
+        message: error.message || 'Unknown error',
+        stack: error.stack,
+        error: JSON.stringify(error, Object.getOwnPropertyNames(error), 2),
+      })
+      toast.error(error.message || 'Failed to load lead data')
     } finally {
       setLoading(false)
     }

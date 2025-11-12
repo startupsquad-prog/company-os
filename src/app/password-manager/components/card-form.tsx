@@ -209,14 +209,14 @@ export function CardForm({ card, open, onOpenChange, onSubmit }: CardFormProps) 
               <div className="grid gap-2">
                 <Label htmlFor="expiry_month">Expiry Month</Label>
                 <Select
-                  value={formData.expiry_month?.toString() || ''}
-                  onValueChange={(value) => setFormData({ ...formData, expiry_month: value ? parseInt(value) : undefined })}
+                  value={formData.expiry_month?.toString() || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, expiry_month: value === '__none__' ? undefined : value ? parseInt(value) : undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Month" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {months.map((month) => (
                       <SelectItem key={month} value={month.toString()}>
                         {String(month).padStart(2, '0')}
@@ -228,14 +228,14 @@ export function CardForm({ card, open, onOpenChange, onSubmit }: CardFormProps) 
               <div className="grid gap-2">
                 <Label htmlFor="expiry_year">Expiry Year</Label>
                 <Select
-                  value={formData.expiry_year?.toString() || ''}
-                  onValueChange={(value) => setFormData({ ...formData, expiry_year: value ? parseInt(value) : undefined })}
+                  value={formData.expiry_year?.toString() || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, expiry_year: value === '__none__' ? undefined : value ? parseInt(value) : undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Year" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {years.map((year) => (
                       <SelectItem key={year} value={year.toString()}>
                         {year}
@@ -306,14 +306,14 @@ export function CardForm({ card, open, onOpenChange, onSubmit }: CardFormProps) 
               <div className="grid gap-2">
                 <Label htmlFor="company_id">Company</Label>
                 <Select
-                  value={formData.company_id || ''}
-                  onValueChange={(value) => setFormData({ ...formData, company_id: value || undefined })}
+                  value={formData.company_id || '__none__'}
+                  onValueChange={(value) => setFormData({ ...formData, company_id: value === '__none__' ? undefined : value || undefined })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select company" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
                     {companies.map((company) => (
                       <SelectItem key={company.id} value={company.id}>
                         {company.name}
@@ -355,4 +355,5 @@ export function CardForm({ card, open, onOpenChange, onSubmit }: CardFormProps) 
     </Dialog>
   )
 }
+
 

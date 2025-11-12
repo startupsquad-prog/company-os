@@ -141,14 +141,14 @@ export function CallForm({ call, open, onOpenChange, onSubmit }: CallFormProps) 
             <div className="grid gap-2">
               <Label htmlFor="contact_id">Contact</Label>
               <Select
-                value={formData.contact_id || ''}
-                onValueChange={(value) => setFormData({ ...formData, contact_id: value || undefined, lead_id: undefined })}
+                value={formData.contact_id || '__none__'}
+                onValueChange={(value) => setFormData({ ...formData, contact_id: value === '__none__' ? undefined : value || undefined, lead_id: undefined })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select contact" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   {contacts.map((contact) => (
                     <SelectItem key={contact.id} value={contact.id}>
                       {contact.name}
@@ -160,14 +160,14 @@ export function CallForm({ call, open, onOpenChange, onSubmit }: CallFormProps) 
             <div className="grid gap-2">
               <Label htmlFor="lead_id">Lead</Label>
               <Select
-                value={formData.lead_id || ''}
-                onValueChange={(value) => setFormData({ ...formData, lead_id: value || undefined, contact_id: undefined })}
+                value={formData.lead_id || '__none__'}
+                onValueChange={(value) => setFormData({ ...formData, lead_id: value === '__none__' ? undefined : value || undefined, contact_id: undefined })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select lead" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="__none__">None</SelectItem>
                   {leads.map((lead) => (
                     <SelectItem key={lead.id} value={lead.id}>
                       {lead.contact?.name || `Lead ${lead.id.slice(0, 8)}`}

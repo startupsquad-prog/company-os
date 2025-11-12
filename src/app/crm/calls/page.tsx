@@ -9,23 +9,35 @@ import { Plus } from 'lucide-react'
 import { DataTable } from '@/components/data-table/data-table'
 import { createCallColumns } from './components/call-columns'
 import { CallForm } from './components/call-form'
+import { CallDetailsModal } from './components/call-details-modal'
 import { useUser } from '@clerk/nextjs'
 import { PageLoader } from '@/components/ui/loader'
 import { ContactTableSkeleton } from '@/app/crm/contacts/components/contact-table-skeleton'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PageAccessHeader } from '@/components/page-access/page-access-header'
 
 function CallsPageContent() {
   const { user: clerkUser } = useUser()
   const [calls, setCalls] = useState<CallFull[]>([])
+  const [allCalls, setAllCalls] = useState<CallFull[]>([])
   const [loading, setLoading] = useState(true)
   const [initialLoading, setInitialLoading] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
   const [editingCall, setEditingCall] = useState<CallFull | null>(null)
+  const [selectedCall, setSelectedCall] = useState<CallFull | null>(null)
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [pageCount, setPageCount] = useState(0)
   const [sorting, setSorting] = useState<SortingState>([])
   const [filters, setFilters] = useState<ColumnFiltersState>([])
   const [search, setSearch] = useState('')
+  const [callTypeFilter, setCallTypeFilter] = useState<string>('all')
+
+  // Reset page to 1 when filter changes
+  useEffect(() => {
+    setPage(1)
+  }, [callTypeFilter])
 
   const fetchCalls = useCallback(async () => {
     if (!clerkUser?.id) return
@@ -46,14 +58,22 @@ function CallsPageContent() {
         query = query.or(`phone_number.ilike.%${search}%,subject.ilike.%${search}%,notes.ilike.%${search}%`)
       }
 
-      const callTypeFilter = filters.find((f) => f.id === 'call_type')
-      if (callTypeFilter && callTypeFilter.value) {
-        const values = Array.isArray(callTypeFilter.value) ? callTypeFilter.value : [callTypeFilter.value]
-        query = query.in('call_type', values)
+      // Apply call type filter from tabs
+      if (callTypeFilter === 'incoming') {
+        query = query.eq('call_type', 'inbound')
+      } else if (callTypeFilter === 'outgoing') {
+        query = query.eq('call_type', 'outbound')
+      } else if (callTypeFilter === 'missed') {
+        query = query.eq('call_type', 'missed')
+      } else if (callTypeFilter === 'rejected') {
+        query = query.in('status', ['no_answer', 'failed', 'cancelled'])
       }
+      // 'all' means no filter
 
+      // Apply other filters from column filters (if any)
       const statusFilter = filters.find((f) => f.id === 'status')
-      if (statusFilter && statusFilter.value) {
+      if (statusFilter && statusFilter.value && callTypeFilter !== 'rejected') {
+        // Only apply status filter if not using rejected tab (which filters by status)
         const values = Array.isArray(statusFilter.value) ? statusFilter.value : [statusFilter.value]
         query = query.in('status', values)
       }
@@ -83,7 +103,7 @@ function CallsPageContent() {
         ? await (supabase as any)
             .schema('core')
             .from('contacts')
-            .select('id, name, phone')
+            .select('id, name, phone, email')
             .in('id', contactIds)
         : { data: [] }
 
@@ -101,7 +121,7 @@ function CallsPageContent() {
         ? await (supabase as any)
             .schema('core')
             .from('contacts')
-            .select('id, name')
+            .select('id, name, phone, email')
             .in('id', leadContactIds)
         : { data: [] }
 
@@ -110,7 +130,7 @@ function CallsPageContent() {
         ? await (supabase as any)
             .schema('core')
             .from('profiles')
-            .select('id, first_name, last_name')
+            .select('id, first_name, last_name, email, phone, avatar_url')
             .in('id', callerIds)
         : { data: [] }
 
@@ -132,6 +152,7 @@ function CallsPageContent() {
           contact,
           lead: lead ? { ...lead, contact: leadContact } : null,
           caller,
+          meta: call.meta || null,
         }
       })
 
@@ -144,11 +165,94 @@ function CallsPageContent() {
       setLoading(false)
       setInitialLoading(false)
     }
-  }, [clerkUser?.id, page, pageSize, sorting, filters, search])
+  }, [clerkUser?.id, page, pageSize, sorting, filters, search, callTypeFilter])
+
+  // Fetch all calls for metrics (unpaginated)
+  const fetchAllCalls = useCallback(async () => {
+    if (!clerkUser?.id) return
+
+    try {
+      const supabase = createClient()
+
+      // Fetch all calls without pagination
+      const { data: calls, error } = await (supabase as any)
+        .schema('crm')
+        .from('calls')
+        .select('*')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      // Fetch related data separately (same as fetchCalls)
+      const contactIds = [...new Set((calls || []).map((c: any) => c.contact_id).filter(Boolean))]
+      const leadIds = [...new Set((calls || []).map((c: any) => c.lead_id).filter(Boolean))]
+      const callerIds = [...new Set((calls || []).map((c: any) => c.caller_id).filter(Boolean))]
+
+      const { data: contacts } = contactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name, phone, email')
+            .in('id', contactIds)
+        : { data: [] }
+
+      const { data: leads } = leadIds.length > 0
+        ? await (supabase as any)
+            .schema('crm')
+            .from('leads')
+            .select('id, contact_id')
+            .in('id', leadIds)
+        : { data: [] }
+
+      const leadContactIds = [...new Set((leads || []).map((l: any) => l.contact_id).filter(Boolean))]
+      const { data: leadContacts } = leadContactIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('contacts')
+            .select('id, name, phone, email')
+            .in('id', leadContactIds)
+        : { data: [] }
+
+      const { data: profiles } = callerIds.length > 0
+        ? await (supabase as any)
+            .schema('core')
+            .from('profiles')
+            .select('id, first_name, last_name, email, phone, avatar_url')
+            .in('id', callerIds)
+        : { data: [] }
+
+      const contactsMap = new Map((contacts || []).map((c: any) => [c.id, c]))
+      const leadsMap = new Map((leads || []).map((l: any) => [l.id, l]))
+      const leadContactsMap = new Map((leadContacts || []).map((c: any) => [c.id, c]))
+      const profilesMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+      const callsWithRelations = (calls || []).map((call: any) => {
+        const contact = call.contact_id ? contactsMap.get(call.contact_id) : null
+        const lead = call.lead_id ? leadsMap.get(call.lead_id) : null
+        const leadContact = lead?.contact_id ? leadContactsMap.get(lead.contact_id) : null
+        const caller = call.caller_id ? profilesMap.get(call.caller_id) : null
+
+        return {
+          ...call,
+          contact,
+          lead: lead ? { ...lead, contact: leadContact } : null,
+          caller,
+          meta: call.meta || null,
+        }
+      })
+
+      setAllCalls(callsWithRelations)
+    } catch (error: any) {
+      console.error('Error fetching all calls:', error)
+      setAllCalls([])
+    }
+  }, [clerkUser?.id])
 
   useEffect(() => {
     fetchCalls()
-  }, [fetchCalls])
+    fetchAllCalls()
+  }, [fetchCalls, fetchAllCalls])
 
   const handleSubmit = async (data: CallFormData) => {
     if (!clerkUser?.id) return
@@ -179,6 +283,7 @@ function CallsPageContent() {
       }
 
       await fetchCalls()
+      await fetchAllCalls() // Refresh metrics
     } catch (error: any) {
       console.error('Error saving call:', error)
       toast.error(error.message || 'Failed to save call')
@@ -193,6 +298,7 @@ function CallsPageContent() {
     try {
       const supabase = createClient()
       const { error } = await (supabase as any)
+        .schema('crm')
         .from('calls')
         .update({ deleted_at: new Date().toISOString() })
         .eq('id', call.id)
@@ -200,6 +306,7 @@ function CallsPageContent() {
       if (error) throw error
       toast.success('Call deleted successfully')
       await fetchCalls()
+      await fetchAllCalls() // Refresh metrics
     } catch (error: any) {
       console.error('Error deleting call:', error)
       toast.error('Failed to delete call')
@@ -207,7 +314,10 @@ function CallsPageContent() {
   }
 
   const columns = createCallColumns({
-    onView: () => {},
+    onView: (call) => {
+      setSelectedCall(call)
+      setDetailsModalOpen(true)
+    },
     onEdit: (call) => {
       setEditingCall(call)
       setFormOpen(true)
@@ -215,16 +325,21 @@ function CallsPageContent() {
     onDelete: handleDelete,
   })
 
+  // Count calls by type/status for tabs
+  const getCallCount = (filter: string) => {
+    if (filter === 'all') return allCalls.length
+    if (filter === 'incoming') return allCalls.filter((c) => c.call_type === 'inbound').length
+    if (filter === 'outgoing') return allCalls.filter((c) => c.call_type === 'outbound').length
+    if (filter === 'missed') return allCalls.filter((c) => c.call_type === 'missed').length
+    if (filter === 'rejected') {
+      return allCalls.filter((c) => 
+        c.status === 'no_answer' || c.status === 'failed' || c.status === 'cancelled'
+      ).length
+    }
+    return 0
+  }
+
   const filterConfig = [
-    {
-      columnId: 'call_type',
-      title: 'Type',
-      options: [
-        { label: 'Inbound', value: 'inbound' },
-        { label: 'Outbound', value: 'outbound' },
-        { label: 'Missed', value: 'missed' },
-      ],
-    },
     {
       columnId: 'status',
       title: 'Status',
@@ -241,22 +356,35 @@ function CallsPageContent() {
   return (
     <>
       <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
-        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        {/* Page Title and Subtitle */}
+        <div className="flex items-center justify-between mb-3 flex-shrink-0">
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Calls</h1>
             <p className="text-xs text-muted-foreground mt-0.5">Manage and track your call logs</p>
           </div>
-          <button
-            onClick={() => {
-              setEditingCall(null)
-              setFormOpen(true)
-            }}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Log Call
-          </button>
+          <PageAccessHeader pagePath="/crm/calls" />
         </div>
+
+        {/* Call Type Tabs */}
+        <Tabs value={callTypeFilter} onValueChange={setCallTypeFilter} className="w-full mb-4 flex-shrink-0">
+          <TabsList>
+            <TabsTrigger value="all">
+              All ({getCallCount('all')})
+            </TabsTrigger>
+            <TabsTrigger value="incoming">
+              Incoming ({getCallCount('incoming')})
+            </TabsTrigger>
+            <TabsTrigger value="outgoing">
+              Outgoing ({getCallCount('outgoing')})
+            </TabsTrigger>
+            <TabsTrigger value="missed">
+              Missed ({getCallCount('missed')})
+            </TabsTrigger>
+            <TabsTrigger value="rejected">
+              Rejected ({getCallCount('rejected')})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {initialLoading ? (
           <ContactTableSkeleton />
@@ -301,6 +429,24 @@ function CallsPageContent() {
           }
         }}
         onSubmit={handleSubmit}
+      />
+
+      <CallDetailsModal
+        call={selectedCall}
+        open={detailsModalOpen}
+        onOpenChange={(open) => {
+          setDetailsModalOpen(open)
+          if (!open) {
+            setSelectedCall(null)
+          }
+        }}
+        onEdit={(call) => {
+          setSelectedCall(null)
+          setDetailsModalOpen(false)
+          setEditingCall(call)
+          setFormOpen(true)
+        }}
+        onDelete={handleDelete}
       />
     </>
   )

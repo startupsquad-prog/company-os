@@ -1,5 +1,6 @@
 'use client'
 
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
@@ -16,6 +17,7 @@ import {
 import { MoreHorizontal, Eye, Edit, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import type { LeadFull, LeadStatus } from '@/lib/types/leads'
+import { getDiceBearAvatar, getUserInitials } from '@/lib/utils/avatar'
 
 interface LeadListProps {
   data: LeadFull[]
@@ -37,10 +39,28 @@ const statusConfig: Record<LeadStatus, { label: string; variant: any }> = {
 }
 
 export function LeadList({ data, onEdit, onDelete, onView, onStatusChange, onAdd }: LeadListProps) {
+  const router = useRouter()
+
+  const handleView = (lead: LeadFull) => {
+    if (onView) {
+      onView(lead)
+    } else {
+      router.push(`/crm/leads/${lead.id}`)
+    }
+  }
+
   return (
     <div className="space-y-2">
       {data.map((lead) => {
         const status = statusConfig[lead.status] || { label: lead.status, variant: 'outline' }
+        const contact = lead.contact
+        const contactName = contact?.name || 'Unnamed Lead'
+        const contactEmail = contact?.email || ''
+        const avatarSeed = contactName !== 'Unnamed Lead' ? contactName : contactEmail || lead.id
+        const avatarUrl = getDiceBearAvatar(avatarSeed)
+        const initials = contactName !== 'Unnamed Lead'
+          ? getUserInitials(contactName.split(' ')[0], contactName.split(' ').slice(1).join(' '), contactEmail)
+          : '?'
 
         return (
           <Card key={lead.id} className="hover:shadow-md transition-shadow">
@@ -48,15 +68,10 @@ export function LeadList({ data, onEdit, onDelete, onView, onStatusChange, onAdd
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
                   <div className="flex-shrink-0">
-                    {lead.owner && (
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={lead.owner.avatar_url || undefined} />
-                        <AvatarFallback>
-                          {`${lead.owner.first_name?.[0] || ''}${lead.owner.last_name?.[0] || ''}`.toUpperCase() ||
-                            '?'}
-                        </AvatarFallback>
-                      </Avatar>
-                    )}
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={avatarUrl} alt={contactName} />
+                      <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                    </Avatar>
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -64,23 +79,44 @@ export function LeadList({ data, onEdit, onDelete, onView, onStatusChange, onAdd
                       <Button
                         variant="link"
                         className="h-auto p-0 font-medium text-left"
-                        onClick={() => onView?.(lead)}
+                        onClick={() => handleView(lead)}
                       >
-                        {lead.contact?.name || 'Unnamed Lead'}
+                        {contactName}
                       </Button>
                       <Badge variant={status.variant}>{status.label}</Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {lead.company?.name && <span>{lead.company.name}</span>}
+                      {contactEmail && (
+                        <a
+                          href={`mailto:${contactEmail}`}
+                          className="hover:text-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {contactEmail}
+                        </a>
+                      )}
+                      {contact?.phone && (
+                        <>
+                          {contactEmail && <span>•</span>}
+                          <a
+                            href={`tel:${contact.phone}`}
+                            className="hover:text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {contact.phone}
+                          </a>
+                        </>
+                      )}
+                      {lead.company?.name && <span>• {lead.company.name}</span>}
                       {lead.source && (
-                        <span className="capitalize">{lead.source.replace('_', ' ')}</span>
+                        <span className="capitalize">• {lead.source.replace('_', ' ')}</span>
                       )}
                       {lead.value && (
-                        <span className="font-medium">${lead.value.toLocaleString()}</span>
+                        <span className="font-medium">• ${lead.value.toLocaleString()}</span>
                       )}
                       {lead.last_interaction_at && (
                         <span>
-                          Last activity: {format(new Date(lead.last_interaction_at), 'MMM d, yyyy')}
+                          • Last activity: {format(new Date(lead.last_interaction_at), 'MMM d, yyyy')}
                         </span>
                       )}
                     </div>
@@ -97,7 +133,7 @@ export function LeadList({ data, onEdit, onDelete, onView, onStatusChange, onAdd
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => onView?.(lead)}>
+                      <DropdownMenuItem onClick={() => handleView(lead)}>
                         <Eye className="mr-2 h-4 w-4" />
                         View
                       </DropdownMenuItem>

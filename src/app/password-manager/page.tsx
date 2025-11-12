@@ -13,6 +13,8 @@ import { PasswordForm } from './components/password-form'
 import { CardTable } from './components/card-table'
 import { CardForm } from './components/card-form'
 import { DocumentTable } from './components/document-table'
+import { BankDetailsTable } from './components/bank-details-table'
+import { NetBankingTable } from './components/netbanking-table'
 import { PageLoader } from '@/components/ui/loader'
 import { ContactTableSkeleton } from '@/app/crm/contacts/components/contact-table-skeleton'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -291,11 +293,13 @@ function PasswordManagerPageContent() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 min-h-0 overflow-hidden password-manager-tabs">
-          <div className="flex items-center justify-between flex-shrink-0" style={{ marginBottom: 0, paddingBottom: 0, height: 'auto', minHeight: 'auto' }}>
-            <TabsList className="w-fit" style={{ marginBottom: 0 }}>
+          <div className="flex items-center justify-between flex-shrink-0 mb-4">
+            <TabsList className="w-fit">
               <TabsTrigger value="passwords">Passwords</TabsTrigger>
               <TabsTrigger value="cards">Cards</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="bank-details">Bank Details</TabsTrigger>
+              <TabsTrigger value="netbanking">NetBanking</TabsTrigger>
             </TabsList>
             {activeTab === 'cards' && (
               <Button
@@ -313,8 +317,7 @@ function PasswordManagerPageContent() {
 
           <TabsContent 
             value="passwords" 
-            className="!mt-0 !pt-0" 
-            style={{ display: 'flex', flexDirection: 'column', flex: '1', minHeight: 0, height: '100%', marginTop: 0, paddingTop: 0 }}
+            className="hidden data-[state=active]:flex flex-1 flex-col min-h-0 overflow-hidden mt-4" 
           >
             {passwordsInitialLoading ? (
               <ContactTableSkeleton />
@@ -351,8 +354,7 @@ function PasswordManagerPageContent() {
 
           <TabsContent 
             value="cards" 
-            className="flex-1 overflow-y-auto min-h-0 mt-0" 
-            style={{ marginTop: 0, paddingTop: 0 }}
+            className="hidden data-[state=active]:flex flex-1 flex-col min-h-0 overflow-y-auto mt-4" 
           >
             {cardsInitialLoading ? (
               <div className="flex items-center justify-center h-64">
@@ -372,9 +374,23 @@ function PasswordManagerPageContent() {
 
           <TabsContent 
             value="documents" 
-            className="flex-1 overflow-y-auto min-h-0 mt-0"
+            className="hidden data-[state=active]:flex flex-1 flex-col min-h-0 overflow-y-auto mt-4"
           >
             <DocumentTable />
+          </TabsContent>
+
+          <TabsContent 
+            value="bank-details" 
+            className="hidden data-[state=active]:flex flex-1 flex-col min-h-0 overflow-y-auto mt-4"
+          >
+            <BankDetailsTable />
+          </TabsContent>
+
+          <TabsContent 
+            value="netbanking" 
+            className="hidden data-[state=active]:flex flex-1 flex-col min-h-0 overflow-y-auto mt-4"
+          >
+            <NetBankingTable />
           </TabsContent>
         </Tabs>
       </div>

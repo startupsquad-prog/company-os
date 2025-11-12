@@ -49,7 +49,7 @@ function TicketsPageContent() {
       // For kanban view, fetch all tickets (use large pageSize)
       const isKanbanView = view === 'kanban'
       const params = new URLSearchParams({
-        page: '1',
+        page: isKanbanView ? '1' : page.toString(),
         pageSize: isKanbanView ? '1000' : pageSize.toString(),
         view: view,
         ...(search ? { search } : {}),
@@ -427,6 +427,14 @@ function TicketsPageContent() {
           setDetailsModalOpen(false)
           setEditingTicket(ticket)
           setFormOpen(true)
+        }}
+        onUpdate={async (updatedTicket) => {
+          // Update the ticket in the list and refresh, but keep details modal open
+          setSelectedTicket(updatedTicket)
+          await fetchTickets()
+          if (view === 'kanban') {
+            await fetchAllTickets()
+          }
         }}
         onDelete={handleDelete}
         allTickets={view === 'kanban' ? allTickets : tickets}
